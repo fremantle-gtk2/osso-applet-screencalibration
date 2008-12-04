@@ -1,0 +1,81 @@
+/*
+ * This file is part of osso-applet-screencalibration
+ *
+ * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies).
+ *
+ * Contact: Tapani Paelli <tapani.palli@nokia.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License 
+ * version 2 as published by the Free Software Foundation. 
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ * 02110-1301 USA
+ *
+ */  
+
+
+#ifndef _OSSO_APPLET_SCREENCALIBRATION_CALIBX_H_
+#define _OSSO_APPLET_SCREENCALIBRATION_CALIBX_H_
+
+#include <X11/Xlib.h>
+#include <X11/Xft/Xft.h>
+#include <X11/keysym.h>
+#include <X11/extensions/Xsp.h>
+
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <syslog.h>
+#include <locale.h>
+
+#include <stdlib.h>
+#include <string.h>
+
+#include <libosso.h>
+
+#include "graphics.h"
+#include "common.h"
+#include "config.h"
+
+#define @TARGET_ARCH@
+
+/*#define DEBUG_MODE*/
+
+#define POINT_MAX_DISTANCE 60
+#define MAX_SAMPLES        128
+#define REFRESH_IDLE       600000
+
+#define POINT_SCR_DST_X 80
+#define POINT_SCR_DST_Y 60
+
+#define MAXCVALUE 65532
+
+/* text edit buffer */
+char buffer[128];
+
+extern int errno;
+
+/* function definitions */
+static void signal_handler (int sig);
+
+static void translate (x_info* xinfo, int *x, int *y);
+static int sort_by_x (const void *a, const void *b);
+static int sort_by_y (const void *a, const void *b);
+static uint distance (int x, int y, XPoint *p);
+
+static void closing_procedure (void);
+static ush reset_calibration (x_info* xinfo);
+
+//static uint wait_until_topmost_window(x_info *xinfo, int max_secs);
+static void save_configuration (void);
+
+#endif
