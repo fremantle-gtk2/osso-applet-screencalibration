@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=ctrp_ti_screen_calibration
+Comment=Calibrate touchscreen
+Type=HildonControlPanelPlugin
+Icon=qgn_list_cp_calibration
+Categories=general
+X-control-panel-plugin=tscalib.so

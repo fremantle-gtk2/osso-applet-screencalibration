@@ -1,0 +1,47 @@
+
+AC_PREREQ(2.59)
+
+AC_INIT(osso-applet-screencalibration, 1.4, tapani.palli@nokia.com)
+AM_INIT_AUTOMAKE(AC_PACKAGE_NAME, AC_PACKAGE_VERSION)
+AM_CONFIG_HEADER(config.h)
+
+AC_PROG_CC
+AC_PROG_INSTALL
+AC_HEADER_STDC
+
+PKG_PROG_PKG_CONFIG
+
+if test x`dpkg --print-architecture` = xarmel; then \
+	TARGET_ARCH=ARM_TARGET; \
+	PKG_CHECK_MODULES(XSP, xsp) \
+	AC_SUBST(XSP_LIBS) \
+	AC_SUBST(XSP_CFLAGS) \
+	else \
+	TARGET_ARCH=X86_TARGET; \
+fi;
+
+AC_SUBST(TARGET_ARCH)
+
+# dependencies
+PKG_CHECK_MODULES(CAIRO, cairo)
+AC_SUBST(CAIRO_LIBS)
+AC_SUBST(CAIRO_CFLAGS)
+
+PKG_CHECK_MODULES(GTK, gtk+-2.0)
+AC_SUBST(GTK_LIBS)
+AC_SUBST(GTK_CFLAGS)
+
+PKG_CHECK_MODULES(LIBOSSO, libosso)
+AC_SUBST(LIBOSSO_LIBS)
+AC_SUBST(LIBOSSO_CFLAGS)
+
+PROGRAM=osso-applet-screencalibration
+AC_SUBST(PROGRAM)
+
+AC_CONFIG_FILES([
+Makefile \
+src/Makefile \
+etc/Makefile
+])
+
+AC_OUTPUT

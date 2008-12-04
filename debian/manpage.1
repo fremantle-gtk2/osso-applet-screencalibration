@@ -1,0 +1,39 @@
+.TH tscalibrate 1
+.\" NAME should be all caps, SECTION should be 1-8, maybe w/ subsection
+.\" other parms are allowed: see man(7), man(1)
+.SH NAME
+osso-applet-screencalibration \- program to calibrate touchscreen
+.SH SYNOPSIS
+.B tscalibrate
+.I "[startup]"
+.br
+.SH "DESCRIPTION"
+This manual page documents briefly the
+.BR osso-applet-screencalibration
+command.
+
+.PP
+.B osso-applet-screencalibration
+is a program that consists of
+ 
+1. dynamic library (tslib.so)
+   - used to launch the program from control panel
+ 
+2. calibration program (tscalibrate)
+   - main program, can be launched from shell also
+     with option 'startup' (no dbus, no osso)
+                                                                                                                                               
+3. suid binary (ts_cfg)
+   - writes the configuration file with root rights
+                                                                                                                                               
+4. default configuration file ("factory settings")
+
+.SH OPTIONS
+.TP
+.B startup
+Launches calibration program without d-bus.
+.TP
+.B reset
+Resets factory calibration settings.
+.SH AUTHOR
+This manual page was written by  <tapani.palli@nokia.com>.
