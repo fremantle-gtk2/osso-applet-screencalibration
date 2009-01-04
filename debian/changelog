@@ -4,9 +4,11 @@ osso-applet-screencalibration (1.4.5-34) unstable; urgency=low
     again (temporary solution)
   * src/gfx.c:
     GtkWindow is used for application, XWindow was not showing in fullscreen.
-    FIXME: Icons are provided by the package for now.
+    FIXME Icons are provided by the package for now.
   * src/main.c: gtk_init is called
   * src/Makefile.am: gtk dependency needed
+
+ -- Peter Aradi <peter.aradi@blumsoft.eu>  Thu, 18 Dec 2008 16:24:59 +0100
 
 osso-applet-screencalibration (1.4.5-33) unstable; urgency=low
 
