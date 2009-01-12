@@ -1,0 +1,4 @@
+2009-01-12 Peter Aradi <peter.aradi@blumsoft.eu>
+	
+	* etc/tscalibrate.desktop:
+	Fixed icon name and localization component.
