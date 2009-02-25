@@ -27,12 +27,24 @@
 #include <stdio.h>
 #include <locale.h>
 #include <libintl.h>
+#include <sys/unistd.h>
+
+enum {
+   TYPE_MOTION = 0,
+   TYPE_BPRESS,
+   TYPE_BRELEASE,
+   TYPE_KRELEASE,
+   NUM_TYPES /* always the last one */
+};
+
+int evtypes [NUM_TYPES];
 
 enum
   {
     TAP_CLOSER = 0,
     TAP_NEXT_TARGET,
-    TAP_COMPLETE
+    TAP_COMPLETE,
+	TAP_RESTART
   };
 
 #define uint unsigned int

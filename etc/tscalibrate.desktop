@@ -5,4 +5,4 @@ Type=HildonControlPanelPlugin
 Icon=control_calibration
 Categories=general
 X-control-panel-plugin=tscalib.so
-X-Text-Domain=osso-applet-screencalibration
+X-Text-Domain=hildon-control-panel

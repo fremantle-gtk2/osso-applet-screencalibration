@@ -40,7 +40,7 @@ SOURCES = \
 	  gfx.h         \
 	  calibration.h
 
-DEPS = @CAIRO_LIBS@ @CAIRO_CFLAGS@ @XSP_LIBS@ @XSP_CFLAGS@ @GTK_CFLAGS@ @GTK_LIBS@
+DEPS = @CAIRO_LIBS@ @CAIRO_CFLAGS@ @TS_LIBS@ @TS_CFLAGS@ @XI_CFLAGS@ @XI_LIBS@
 LAUNCHER_DEPS = @GTK_CFLAGS@ @GTK_LIBS@ @LIBOSSO_CFLAGS@ @LIBOSSO_LIBS@
 
 DESTDIR = @DESTDIR@
@@ -49,7 +49,7 @@ CC = gcc -g -O2
 
 all :
 	$(CC) -o $(BINARY) $(SOURCES) $(ARM_OPS) $(DEPS) -lm -D@TARGET_ARCH@
-	$(CC) -D_GNU_SOURCE -shared -fPIC -o tscalib.so launch.c $(LAUNCHER_DEPS)
+	$(CC) -D_GNU_SOURCE -shared -fPIC -o tscalib.so launch.c $(LAUNCHER_DEPS) -D@TARGET_ARCH@
 
 install :
 	install -m 755 $(BINARY) $(DESTDIR)/usr/bin

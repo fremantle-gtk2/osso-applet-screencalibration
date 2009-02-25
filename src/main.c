@@ -28,17 +28,13 @@
 
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
-
-#ifdef ARM_TARGET
-#include <X11/extensions/Xsp.h>
-#endif
+#include <X11/extensions/XInput.h>
 
 #include "calibration.h"
 #include "common.h"
 #include "gfx.h"
-#include <gtk/gtk.h>
+#include <tslib.h>
 
-#define DEFAULT_CALIBRATION_FILE "/etc/pointercal.default"
 #define HOTSPOT_AMOUNT 3
 
 #define ANIM_TIMEOUT 30000
@@ -47,6 +43,10 @@ static x_info xinfo;
 static calibration cal;
 
 #ifdef ARM_TARGET
+#define DEFAULT_CAL_PARAMS "14114 18 -2825064 34 -8765 32972906 65536"
+#define XCONF "/etc/xorg.conf-RX-51.default"
+#define CANCEL 22
+static struct tsdev *ts;
 static calibration defcal;
 #endif
 
@@ -56,51 +56,27 @@ static calibration defcal;
 static void
 closing_procedure (void)
 {
-#ifdef ARM_TARGET
-  XSPSetTSRawMode(xinfo.dpy, False);
-#endif
   XCloseDisplay(xinfo.dpy);
 }
-
-
 
 #ifdef ARM_TARGET
 /*****************************************************************/
 /*
- * rawmode needs to be turned off in SIGSEGV etc.
- */
-static void
-signal_handler (int sig)
-{
-  XSPSetTSRawMode(xinfo.dpy, False);
-}
-
-/*
- * read 'factory default' values
+ * read 'factory default' parameters for coordinate translation
  */
 static uint
 read_default_calibration (void)
 {
-  FILE *in;
   uint items;
-  in = fopen (DEFAULT_CALIBRATION_FILE, "r");
-
-  if (in)
-    {
-      items = fscanf (in, "%d %d %d %d %d %d %d",
-		      &defcal.a[1], &defcal.a[2], &defcal.a[0],
-		      &defcal.a[4], &defcal.a[5], &defcal.a[3],
-		      &defcal.a[6]);
-      fclose (in);
-      if (items != 7)
-	{
-	  return 0;
-	}
-
-      return 1;
-    }
-  ERROR ("could not open default calibration file\n");
-  return 0;
+  items = sscanf (DEFAULT_CAL_PARAMS, "%d %d %d %d %d %d %d",
+	      &defcal.a[1], &defcal.a[2], &defcal.a[0],
+	      &defcal.a[4], &defcal.a[5], &defcal.a[3],
+	      &defcal.a[6]);
+  if (items != 7)
+  {
+    return 0;
+  }
+  return 1;
 }
 
 
@@ -110,13 +86,7 @@ read_default_calibration (void)
 static uint
 reset_calibration (x_info *xinfo)
 {
-  if(!XSPSetTSCalibration(xinfo->dpy,
-			  defcal.a[0], defcal.a[1], defcal.a[2],
-			  defcal.a[3], defcal.a[4], defcal.a[5],
-			  defcal.a[6]))
-    {
-      return 0;
-    }
+/**FIXME: write Xorg.conf? */
   return 1;
 }
 
@@ -144,16 +114,140 @@ static uint distance (int x1, int y1, int x2, int y2)
 }
 
 /*
+ * Use middle point to calculate min and max device coordinates of x and y
+ * Middle point and target point device and screen coordinates are already
+ * stored in cal
+ */
+static void 
+extrapolate_dev_coords (int* xmin, int* xmax, int* ymin, int* ymax, \
+						calibration* cal, x_info* xinfo)
+{
+  int X=xinfo->xres;
+  int Y=xinfo->yres;
+  float a1, a2;
+
+  a1 = (float)(X - cal->xfb[1]) / X;
+  a1 *= (float)(cal->x[4] * 2);
+  a1 += (float) cal->x[1];
+  a2 = (float)(X - cal->xfb[2]) / X;
+  a2 *= (float)(cal->x[4] * 2);
+  a2 += (float) cal->x[2];
+  *xmax = (int)((a1+a2)/2);
+
+  a1 = (float)(cal->xfb[0]) / X;
+  a1 *= (float)(cal->x[4] * 2);
+  a1 *= -1.0;
+  a1 += (float) cal->x[0];
+  a2 = (float)(cal->xfb[3]) / X;
+  a2 *= (float)(cal->x[4] * 2);
+  a2 *= -1.0;
+  a2 += (float) cal->x[3];
+  *xmin = (int)((a1+a2)/2);
+
+  a1 = (float)(cal->yfb[0]) / Y;
+  a1 *= (float)(cal->y[4] * 2);
+  a1 += (float) cal->y[0];
+  a2 = (float)(cal->yfb[1]) / Y;
+  a2 *= (float)(cal->y[4] * 2);
+  a2 += (float) cal->y[1];
+  *ymin = (int)((a1+a2)/2);
+
+  a1 = (float)(Y - cal->yfb[2]) / Y;
+  a1 *= (float)(cal->y[4] * 2);
+  a1 *= -1.0;
+  a1 += (float) cal->y[2];
+  a2 = (float)(Y - cal->yfb[3]) / Y;
+  a2 *= (float)(cal->y[4] * 2);
+  a2 *= -1.0;
+  a2 += (float) cal->y[3];
+  *ymax=(int)((a1+a2)/2);
+  
+}
+
+/* Write Xorg.conf with new calibration parameters */
+static int write_config (int xmin, int xmax, int ymin, int ymax) {
+  char * line = NULL;
+  size_t len = 0;
+  ssize_t read;
+  const char* expr1 = "Touchscreen";
+  const char* expr2 = "Calibration";
+  char section_ts = 0;
+  char temp_filename[] = "/etc/xorg.confXXXXXX";
+  int fd;
+  int i;
+  FILE* fp_conf = fopen (XCONF, "r");
+  char* calibration_values = calloc (512,sizeof(char));
+
+  /*FIXME rotation components are currently not used by xserver, set to 0 */
+  i = snprintf (calibration_values, 512, "         Option       \
+	 \"Calibration\"   \"%d %d %d %d %d %d\"\n", xmin, xmax, ymin, ymax ,0,0);
+  
+  if (i<=0)
+	 goto error;
+
+  if (!fp_conf){
+	 ERROR ("could not open xorg.conf\n");
+	 goto error;
+  }
+  
+  fd = mkstemp(temp_filename);
+  if (fd == -1) {
+    ERROR ("Couldn't open temporary file\n");
+	goto error;
+  }
+
+  i = 0;
+  while ((read = getline(&line, &len, fp_conf)) != -1) {
+	if (!section_ts && strstr(line,expr1)) {
+	  section_ts=1;
+      i = write (fd, line, read);
+	} 
+	else if (section_ts && strstr (line, expr2)){
+   /* replace line with new calibration parameters */
+	   i = write (fd, calibration_values, strlen(calibration_values));
+	} else {
+	   i = write (fd, line, read);
+	}
+	
+	if (i==-1) {
+		 ERROR ("could not write temp file\n");
+		 goto error;
+	  }
+  }
+
+  if (line)
+     free(line);
+
+  fclose (fp_conf);
+  close (fd);
+  sync();
+
+  /* overwrite xorg.conf */
+  if(rename(temp_filename, XCONF)) {
+	 ERROR ("could not overwrite xorg.conf\n");
+	 goto error;
+  }
+
+  sync ();
+  return 1;
+
+error:
+  fclose (fp_conf);
+  close (fd);
+  return 0;
+}
+
+/*
  * sorting functions for qsort
  */
 
 static int sort_by_x (const void* a, const void *b)
 {
-  return (((XSPRawTouchscreenEvent *)a)->x - ((XSPRawTouchscreenEvent *)b)->x);
+   return (((struct ts_sample *)a)->x - ((struct ts_sample *)b)->x);
 }
 static int sort_by_y (const void* a, const void *b)
 {
-  return (((XSPRawTouchscreenEvent *)a)->y - ((XSPRawTouchscreenEvent *)b)->y);
+   return (((struct ts_sample *)a)->y - ((struct ts_sample *)b)->y);
 }
 /*****************************************************************/
 #endif
@@ -235,7 +329,7 @@ get_wintype_prop (Display *dpy, Window w)
   return winNormalAtom;
 }
 
-
+/**NOTE: modifications based on tslib code*/
 /*
  * read events & draw graphics
  */
@@ -247,27 +341,11 @@ calibration_event_loop (void)
   long key_pressed;
   int ACTIVE_HOTSPOT = 0;
 
+  unsigned int i;
+
 #ifdef ARM_TARGET
 #define MAX_SAMPLES 256
-  XSPRawTouchscreenEvent samp[MAX_SAMPLES];
-
-  int xsp_event_base = -1;
-  int xsp_error_base = -1;
-  int xsp_major      = -1;
-  int xsp_minor      = -1;
-
-  XSPQueryExtension(xinfo.dpy,
-                    &xsp_event_base,
-                    &xsp_error_base,
-                    &xsp_major,
-                    &xsp_minor);
-  if (xsp_event_base < 0)
-    {
-      ERROR ("XSP extension not found\n");
-      goto exit;
-    }
-
-  XSPSetTSRawMode(xinfo.dpy, True);
+  struct ts_sample samp[MAX_SAMPLES];
 #endif
 
   draw_screen (&xinfo, ACTIVE_HOTSPOT, TAP_NEXT_TARGET);
@@ -279,6 +357,8 @@ calibration_event_loop (void)
 
   usleep (250000);
 
+  
+  XSynchronize (xinfo.dpy, True);
   for (;;)
     {
       event_amount = XEventsQueued (xinfo.dpy, QueuedAfterReading);
@@ -294,57 +374,56 @@ calibration_event_loop (void)
       XNextEvent (xinfo.dpy, &ev);
 
 #ifdef ARM_TARGET
-      /* touchscreen event */
-      if (ev.type == xsp_event_base)
-	{
-	  int index   = 0;
-	  int middle  = 0;
-	  int raw_x   = 0;
-	  int raw_y   = 0;
-	  int trans_x = 0;
-	  int trans_y = 0;
 
-	  /* read all touchscreen events from queue */
-	  while (((ev.type == xsp_event_base) && (index < event_amount))&&(index<MAX_SAMPLES))
-	    {
-	      memcpy(&samp[index], &ev, sizeof(XSPRawTouchscreenEvent));
-	      if (samp[index].x > 0 && samp[index].y > 0)
-		{
-		  index++;
+	if (ev.type == evtypes[TYPE_MOTION] || \
+		ev.type == evtypes[TYPE_BPRESS] || \
+		ev.type == evtypes[TYPE_BRELEASE])
+    {
+      int index   = 0;
+      int middle  = 0;
+      int raw_x   = 0;
+      int raw_y   = 0;
+      int trans_x = 0;
+      int trans_y = 0;
+
+/* for some reason XInput provides different raw data than ts_read */
+	int ret;
+	index = 0;
+	do {
+		if (index < MAX_SAMPLES-1)
+			index++;
+		if (ts_read_raw(ts, &samp[index], 1) < 0) {
+			perror("ts_read");
+			exit(1);
 		}
-	      if (event_amount > 1)
-		{
-		  XNextEvent(xinfo.dpy, &ev);
-		  event_amount--;
-		}
-	    }
+	} while (samp[index].pressure > 0);
+	
+	XFlush(xinfo.dpy);
+	XSync (xinfo.dpy,1);
 
-	  middle = index/2;
+	middle = index/2;
 
-	  qsort(samp, index, sizeof(XSPRawTouchscreenEvent), sort_by_x);
-	  if (index & 1)
-	    {
-	      raw_x = samp[middle].x;
-	    }
-	  else
-	    {
-	      raw_x = (samp[middle-1].x + samp[middle].x) / 2;
-	    }
+	qsort(samp, index, sizeof(struct ts_sample), sort_by_x);
+	if (index & 1){
+	  raw_x = samp[middle].x;
+	}
+    else {
+      raw_x = (samp[middle-1].x + samp[middle].x) / 2;
+    }
 
-	  qsort(samp, index, sizeof(XSPRawTouchscreenEvent), sort_by_y);
-	  if (index & 1)
-	    {
-	      raw_y = samp[middle].y;
-	    }
-	  else
-	    {
-	      raw_y = (samp[middle-1].y + samp[middle].y) / 2;
-	    }
+	qsort(samp, index, sizeof(struct ts_sample), sort_by_y);
+    if (index & 1) {
+      raw_y = samp[middle].y;
+    }
+    else {
+      raw_y = (samp[middle-1].y + samp[middle].y) / 2;
+    }
 
 	  trans_x = raw_x;
 	  trans_y = raw_y;
 
-	  translate (&xinfo, &trans_x, &trans_y);
+	/*translate device coords to screen coords for deviation check */
+    translate (&xinfo, &trans_x, &trans_y);
 
 #define POINT_MAX_DISTANCE 64
 	  if (distance (trans_x, trans_y,
@@ -365,13 +444,18 @@ calibration_event_loop (void)
 		  cal.x[4] = cal.x[0] - ((cal.x[0] - cal.x[1])/2);
 		  cal.y[4] = cal.y[0] - ((cal.y[0] - cal.y[3])/2);
 
-		  if (perform_calibration(&cal))
-		    {
-		      XSPSetTSCalibration(xinfo.dpy,
-					  cal.a[0], cal.a[1], cal.a[2],
-					  cal.a[3], cal.a[4], cal.a[5],
-					  cal.a[6]);
-		    }
+
+	   /* we are finished, calculate extrapolated min and max values
+		* give parameters to xserver */
+	   int minx, maxx, miny, maxy;
+	   extrapolate_dev_coords(&minx, &maxx, &miny, &maxy, &cal, &xinfo);
+
+	   /* FIXME: currently HAL support is not available in xserver, let's write
+		* to Xorg.conf... */
+		if (!write_config(minx, maxx, miny, maxy)) {
+		   ERROR ("Could not write xorg.conf\n");
+		   goto exit;
+		}
 
 		  ACTIVE_HOTSPOT = 42;
 
@@ -382,7 +466,13 @@ calibration_event_loop (void)
 
 		  usleep (2500000);
 
-		  break;
+		  /* FIXME temporary solution until HAL can be used */
+		  draw_screen (&xinfo, ACTIVE_HOTSPOT, TAP_RESTART);
+		  XFlush (xinfo.dpy);
+		  XSync (xinfo.dpy, 1);
+		  usleep (2500000);
+
+		  goto exit;
 		}
 
 	      /* neeext! */
@@ -396,10 +486,18 @@ calibration_event_loop (void)
 	    {
 	      draw_instructions (&xinfo, ACTIVE_HOTSPOT, TAP_CLOSER);
 	    }
-
-
-	  continue;
-	} /* if it was touchscreen event*/
+	} /* if it was tap or motion event */
+	else if (ev.type == evtypes[TYPE_KRELEASE]) {
+	XDeviceKeyEvent *key = (XDeviceKeyEvent *) &ev;
+	
+	  if (key->keycode == CANCEL)
+	  {
+	    /*
+	     * user exit might be handled differently
+	     */
+	    goto exit;
+	  }
+	}
 #endif
 
       /*
@@ -436,23 +534,6 @@ calibration_event_loop (void)
 
 	  if (!banner)
 	    goto exit;
-	}
-	break;
-
-      case KeyPress :
-	key_pressed = XLookupKeysym ((XKeyEvent *)&ev, 0);
-
-	if ((XKeysymToString(key_pressed) == NULL) ||
-	    (key_pressed == XK_Execute || key_pressed == XK_F5))
-	{
-	  goto exit;
-	}
-	else if (key_pressed == XK_Escape)
-	{
-	  /*
-	   * user exit might be handled differently
-	   */
-	  goto exit;
 	}
 	break;
 
@@ -512,8 +593,21 @@ int main (int argc, char **argv)
   bind_textdomain_codeset("osso-applet-screencalibration", "UTF-8");
   textdomain("osso-applet-screencalibration");
 
-  gtk_init (&argc, &argv);
-  
+  char* tsdevice = strdup("/dev/input/ts");
+
+#ifdef ARM_TARGET 
+  ts = ts_open(tsdevice,0);
+
+  if (!ts) {
+    	ERROR("ts_open");
+		exit(1);
+  }
+  if (ts_config(ts)) {
+     	ERROR("ts_config");
+		exit(1);
+  }
+#endif
+
   if (!init_graphics (&xinfo))
   {
     ERROR("graphics initialization failed\n");
@@ -539,6 +633,8 @@ int main (int argc, char **argv)
   }
 #endif
 
+/*NOTE using XSelectExtensionEvent */
+/*
   if (XGrabKeyboard(xinfo.dpy,
                     xinfo.win,
                     False,
@@ -546,7 +642,7 @@ int main (int argc, char **argv)
                     GrabModeAsync,
                     CurrentTime) == AlreadyGrabbed)
     goto away;
-
+*/
   XGrabPointer (xinfo.dpy,
 		xinfo.win,
 		False,
@@ -572,15 +668,6 @@ int main (int argc, char **argv)
   {
     goto away;
   }
-
-  /*
-   * catch signals so that we can turn rawmode off in error situations
-   */
-#ifdef ARM_TARGET
-  signal(SIGINT,  signal_handler);
-  signal(SIGTERM, signal_handler);
-  signal(SIGSEGV, signal_handler);
-#endif
 
   calibration_event_loop();
 
