@@ -24,9 +24,7 @@
 
 #include <time.h>
 #include "gfx.h"
-
-#include <gtk/gtk.h>
-#include <gdk/gdkx.h>
+#include <X11/extensions/XInput.h>
 
 static uint rotation = 0;
 
@@ -74,7 +72,74 @@ change_active_target (x_info *xinfo)
   }
 }
 
+static int
+init_input (x_info* xinfo)
+{
+  XDeviceInfo *info;
+  int          ndevices,
+               i;
+  XDevice     *pointer = NULL;
+  XDevice 	*keyboard = NULL;
+  XEvent       ev;
+  XEventClass  cls[4];
 
+  if (!xinfo)
+    return 0;
+
+  XQueryInputVersion(xinfo->dpy, XI_2_Major, XI_2_Minor);
+
+  
+  info = XListInputDevices(xinfo->dpy, &ndevices);
+
+  for (i = 0; i < ndevices; i++) {
+    
+	XDeviceInfo* current = &info[i];
+    
+	switch(current->use) {
+      case IsXExtensionPointer:
+      /* physical device for touchscreen */
+	    /* open touchscreen */
+	    if (!pointer) {
+		    pointer = XOpenDevice(xinfo->dpy, current->id);
+	    }
+	    break;
+
+	  case IsXExtensionKeyboard:
+      /* physical device for keyboard */
+	    break;
+      case IsXExtensionDevice:
+      /* slave device */
+        break;
+      case IsXPointer:
+      /* master pointer */
+        break;
+      case IsXKeyboard:
+      /* master keyboard */
+	    if (!keyboard)
+		   keyboard = XOpenDevice(xinfo->dpy, current->id);
+        break;
+        }
+    }
+
+    XFreeDeviceList(info);
+
+    DeviceButtonPress(pointer, evtypes[TYPE_BPRESS], cls[0]);
+    DeviceButtonRelease(pointer, evtypes[TYPE_BRELEASE], cls[1]);
+	DeviceMotionNotify (pointer, evtypes[TYPE_MOTION], cls[2]);
+	DeviceKeyRelease (keyboard, evtypes[TYPE_KRELEASE], cls[3]);
+    XSelectExtensionEvent(xinfo->dpy, xinfo->win, cls, 4);
+
+	/* register for other events */
+    XSelectInput(xinfo->dpy, xinfo->win,
+	       StructureNotifyMask | VisibilityChangeMask |
+#ifndef ARM_TARGET
+	       /* mouse buttons are for x86 debugging */
+	       ButtonPressMask | ButtonReleaseMask |
+#endif
+	       ExposureMask);
+ 
+	return 1;
+}
 
 unsigned int
 init_graphics (x_info *xinfo)
@@ -93,10 +158,6 @@ init_graphics (x_info *xinfo)
 	  return 0;
 	}
     }
-
-  GtkWidget* fs_win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-  gtk_window_set_decorated (GTK_WINDOW(fs_win), 0);
-  gtk_widget_show_all (fs_win);
   
   xinfo->screen = DefaultScreen(xinfo->dpy);
   xinfo->depth  = DefaultDepth(xinfo->dpy, xinfo->screen);
@@ -107,10 +168,7 @@ init_graphics (x_info *xinfo)
   xinfo->gc     = DefaultGC(xinfo->dpy, xinfo->screen);
 
   wa.background_pixel  = WhitePixel(xinfo->dpy, xinfo->screen);
-  xinfo->win = GDK_WINDOW_XID (fs_win->window);
-  XSetWindowBackground(xinfo->dpy, xinfo->win, wa.background_pixel);
-	  
-/*
+
   xinfo->win = XCreateWindow (xinfo->dpy,
                               DefaultRootWindow(xinfo->dpy),
                               0,
@@ -122,7 +180,7 @@ init_graphics (x_info *xinfo)
                               InputOutput,
                               xinfo->visual,
                               CWBackPixel, &wa);
-			      */
+			      
   if (!xinfo->win)
     {
       return 0;
@@ -132,15 +190,10 @@ init_graphics (x_info *xinfo)
   fullscreen_atom = XInternAtom(xinfo->dpy, "_NET_WM_STATE_FULLSCREEN", False);
 
   XChangeProperty(xinfo->dpy, xinfo->win, state_atom, XA_ATOM, 32,
-                  PropModeReplace, (unsigned char *)&fullscreen_atom, 1); 
+                  PropModeReplace, (unsigned char *)&fullscreen_atom, 1);
 
-  XSelectInput(xinfo->dpy, xinfo->win,
-	       StructureNotifyMask | VisibilityChangeMask |
-#ifndef ARM_TARGET
-	       /* mouse buttons are for x86 debugging */
-	       ButtonPressMask | ButtonReleaseMask |
-#endif
-	       ExposureMask | KeyPressMask | KeyReleaseMask);
+  if (!init_input (xinfo))
+	 return 0;
 
   XFlush (xinfo->dpy);
   XSync (xinfo->dpy, 0);
@@ -453,7 +506,7 @@ draw_instructions (x_info *xinfo, int active, uint info)
 
   draw_rect (xinfo, 0, xinfo->yres/2 - 3*h, xinfo->xres, 6*h, 1.0, 1.0, 1.0, 1.0);
 
-  if (info != TAP_COMPLETE)
+  if (info != TAP_COMPLETE || info != TAP_RESTART)
     draw_text_center(xinfo, xinfo->yres/2 - 2*h, _("scca_fi_calibrate"));
 
   switch (info)
@@ -467,12 +520,17 @@ draw_instructions (x_info *xinfo, int active, uint info)
     case TAP_COMPLETE :
       snprintf(buffer, 256, _("scca_ib_calib_success"));
       break;
+   /*FIXME temporary solution until HAL support is ok in xserver */
+   case TAP_RESTART :
+ 	  snprintf (buffer, 256, \
+			  "Please restart the device for the calibration to take effect!");
+      break;
     }
 
   draw_text_center(xinfo, xinfo->yres/2, buffer);
 
-  if (info == TAP_COMPLETE)
-    return;
+   if (info == TAP_COMPLETE || info == TAP_RESTART)
+      return;
 
   /*
    * text with <esc> symbol

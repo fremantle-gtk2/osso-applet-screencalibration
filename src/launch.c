@@ -36,7 +36,13 @@
 
 #include "config.h"
 
+/* sudo needed on device for accessing files in /etc and using tslib */
+#ifdef ARM_TARGET
+#define LAUNCH_PAR_AMOUNT 5
+#else
 #define LAUNCH_PAR_AMOUNT 4
+#endif
+
 #define WINDOW_PAR_MAXLENGTH 16
 
 #define BINARY "/usr/bin/tscalibrate"
@@ -66,19 +72,22 @@ my_execute(char *str, int xid)
 {
   int i;
   int status = OSSO_OK;
-  gchar **cmd = malloc (LAUNCH_PAR_AMOUNT * sizeof(gchar*));
+  gchar **cmd = calloc (LAUNCH_PAR_AMOUNT, sizeof(gchar*));
 
   GPid child_pid;
-  GError **error;
+  GError *error = NULL;
   
-  /* build parameters, binary <option> <id> */
+  /* build parameters, <sudo> binary <option> <id> */
   i=0;
+#ifdef ARM_TARGET
+  cmd[i++] = strdup("/usr/bin/sudo");
+#endif
   cmd[i++] = strdup(BINARY);
   cmd[i++] = strdup(str);
-  cmd[i++] = (char*)malloc(WINDOW_PAR_MAXLENGTH);
-  cmd[i++] = (char*)malloc(1);
+  cmd[i++] = (char*)calloc(1, WINDOW_PAR_MAXLENGTH);
+  cmd[i++] = (char*)calloc(1, 1);
 
-  sprintf(cmd[2], "%d", xid);
+  sprintf(cmd[LAUNCH_PAR_AMOUNT-2], "%d", xid);
   cmd[LAUNCH_PAR_AMOUNT-1] = '\0';
 
   /* handle all events in queue */
@@ -95,7 +104,7 @@ my_execute(char *str, int xid)
 		NULL,
 		NULL,
 		&child_pid,
-		error))
+		&error))
   {
     status = OSSO_ERROR;
   }
