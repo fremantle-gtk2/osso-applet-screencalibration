@@ -43,9 +43,13 @@ enum
   {
     TAP_CLOSER = 0,
     TAP_NEXT_TARGET,
-    TAP_COMPLETE,
-	TAP_RESTART
+    TAP_COMPLETE
   };
+
+/* for storing calculated min/max x and y for evdev driver */
+typedef struct {
+   int params[4];
+} cal_evdev;
 
 #define uint unsigned int
 

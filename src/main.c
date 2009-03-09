@@ -44,11 +44,12 @@ static calibration cal;
 
 #ifdef ARM_TARGET
 #define DEFAULT_CAL_PARAMS "14114 18 -2825064 34 -8765 32972906 65536"
+#define DEFAULT_EVDEV_PARAMS "200 3910 3761 180"
 #define XCONF "/etc/xorg.conf-RX-51.default"
 #define CANCEL 22
 static struct tsdev *ts;
 static calibration defcal;
-#endif
+#endif /* ifdef ARM_TARGET */
 
 /*
  * called when program exits, sets rawmode off
@@ -61,111 +62,8 @@ closing_procedure (void)
 
 #ifdef ARM_TARGET
 /*****************************************************************/
-/*
- * read 'factory default' parameters for coordinate translation
- */
-static uint
-read_default_calibration (void)
-{
-  uint items;
-  items = sscanf (DEFAULT_CAL_PARAMS, "%d %d %d %d %d %d %d",
-	      &defcal.a[1], &defcal.a[2], &defcal.a[0],
-	      &defcal.a[4], &defcal.a[5], &defcal.a[3],
-	      &defcal.a[6]);
-  if (items != 7)
-  {
-    return 0;
-  }
-  return 1;
-}
-
-
-/*
- * set 'factory default' values
- */
-static uint
-reset_calibration (x_info *xinfo)
-{
-/**FIXME: write Xorg.conf? */
-  return 1;
-}
-
-
-/*
- * Translate device coordinates to screen coordinates
- * This is needed only for making sure that taps are not totally out
- * of range, which would render the touchscreen unusable after
- * calibration. Use the factory default calibration matrix.
- */
-static void
-translate (x_info* xinfo, int *x, int *y)
-{
-  *x = (defcal.a[1] * *x + defcal.a[2] * *y + defcal.a[0]) / defcal.a[6];
-  *y = (defcal.a[4] * *x + defcal.a[5] * *y + defcal.a[3]) / defcal.a[6];
-}
-
-/*
- * returns distance between given coordinates
- * and given XPoint.
- */
-static uint distance (int x1, int y1, int x2, int y2)
-{
-  return (abs(x2 - x1) + abs(y2 - y1));
-}
-
-/*
- * Use middle point to calculate min and max device coordinates of x and y
- * Middle point and target point device and screen coordinates are already
- * stored in cal
- */
-static void 
-extrapolate_dev_coords (int* xmin, int* xmax, int* ymin, int* ymax, \
-						calibration* cal, x_info* xinfo)
-{
-  int X=xinfo->xres;
-  int Y=xinfo->yres;
-  float a1, a2;
-
-  a1 = (float)(X - cal->xfb[1]) / X;
-  a1 *= (float)(cal->x[4] * 2);
-  a1 += (float) cal->x[1];
-  a2 = (float)(X - cal->xfb[2]) / X;
-  a2 *= (float)(cal->x[4] * 2);
-  a2 += (float) cal->x[2];
-  *xmax = (int)((a1+a2)/2);
-
-  a1 = (float)(cal->xfb[0]) / X;
-  a1 *= (float)(cal->x[4] * 2);
-  a1 *= -1.0;
-  a1 += (float) cal->x[0];
-  a2 = (float)(cal->xfb[3]) / X;
-  a2 *= (float)(cal->x[4] * 2);
-  a2 *= -1.0;
-  a2 += (float) cal->x[3];
-  *xmin = (int)((a1+a2)/2);
-
-  a1 = (float)(cal->yfb[0]) / Y;
-  a1 *= (float)(cal->y[4] * 2);
-  a1 += (float) cal->y[0];
-  a2 = (float)(cal->yfb[1]) / Y;
-  a2 *= (float)(cal->y[4] * 2);
-  a2 += (float) cal->y[1];
-  *ymin = (int)((a1+a2)/2);
-
-  a1 = (float)(Y - cal->yfb[2]) / Y;
-  a1 *= (float)(cal->y[4] * 2);
-  a1 *= -1.0;
-  a1 += (float) cal->y[2];
-  a2 = (float)(Y - cal->yfb[3]) / Y;
-  a2 *= (float)(cal->y[4] * 2);
-  a2 *= -1.0;
-  a2 += (float) cal->y[3];
-  *ymax=(int)((a1+a2)/2);
-  
-}
-
 /* Write Xorg.conf with new calibration parameters */
-static int write_config (int xmin, int xmax, int ymin, int ymax) {
+static int write_config (cal_evdev *p) {
   char * line = NULL;
   size_t len = 0;
   ssize_t read;
@@ -180,7 +78,8 @@ static int write_config (int xmin, int xmax, int ymin, int ymax) {
 
   /*FIXME rotation components are currently not used by xserver, set to 0 */
   i = snprintf (calibration_values, 512, "         Option       \
-	 \"Calibration\"   \"%d %d %d %d %d %d\"\n", xmin, xmax, ymin, ymax ,0,0);
+	 \"Calibration\"   \"%d %d %d %d %d %d\"\n", p->params[0], p->params[1],
+	 p->params[2], p->params[3], 0,0);
   
   if (i<=0)
 	 goto error;
@@ -238,6 +137,127 @@ error:
 }
 
 /*
+ * read 'factory default' parameters for coordinate translation
+ */
+static uint
+read_default_calibration (void)
+{
+  uint items;
+  items = sscanf (DEFAULT_CAL_PARAMS, "%d %d %d %d %d %d %d",
+	      &defcal.a[1], &defcal.a[2], &defcal.a[0],
+	      &defcal.a[4], &defcal.a[5], &defcal.a[3],
+	      &defcal.a[6]);
+  if (items != 7)
+  {
+    return 0;
+  }
+  return 1;
+}
+
+/*
+ * set 'factory default' values
+ */
+static uint
+reset_calibration (x_info *xinfo)
+{
+  cal_evdev reset;
+  uint items;
+
+  items = sscanf (DEFAULT_EVDEV_PARAMS, "%d %d %d %d",
+	      &reset.params[0], &reset.params[1], &reset.params[2], &reset.params[3]);
+  
+  if (items != 4)
+  {
+    return 0;
+  }
+
+  if (!write_config(&reset)) {
+    ERROR ("Could not write xorg.conf\n");
+    return 0;
+  }
+
+  set_calibration_prop (xinfo, &reset);
+  return 1;
+}
+
+
+/*
+ * Translate device coordinates to screen coordinates
+ * This is needed only for making sure that taps are not totally out
+ * of range, which would render the touchscreen unusable after
+ * calibration. Use the factory default calibration matrix.
+ */
+static void
+translate (x_info* xinfo, int *x, int *y)
+{
+  *x = (defcal.a[1] * *x + defcal.a[2] * *y + defcal.a[0]) / defcal.a[6];
+  *y = (defcal.a[4] * *x + defcal.a[5] * *y + defcal.a[3]) / defcal.a[6];
+}
+
+/*
+ * returns distance between given coordinates
+ * and given XPoint.
+ */
+static uint distance (int x1, int y1, int x2, int y2)
+{
+  return (abs(x2 - x1) + abs(y2 - y1));
+}
+
+/*
+ * Use middle point to calculate min and max device coordinates of x and y
+ * Middle point and target point device and screen coordinates are already
+ * stored in cal
+ */
+static void 
+extrapolate_dev_coords (cal_evdev *p, calibration* cal, x_info* xinfo)
+{
+  int X=xinfo->xres;
+  int Y=xinfo->yres;
+  float a1, a2;
+
+  a1 = (float)(X - cal->xfb[1]) / X;
+  a1 *= (float)(cal->x[4] * 2);
+  a1 += (float) cal->x[1];
+  a2 = (float)(X - cal->xfb[2]) / X;
+  a2 *= (float)(cal->x[4] * 2);
+  a2 += (float) cal->x[2];
+  /* xmax */
+  p->params[1] = (int)((a1+a2)/2);
+
+  a1 = (float)(cal->xfb[0]) / X;
+  a1 *= (float)(cal->x[4] * 2);
+  a1 *= -1.0;
+  a1 += (float) cal->x[0];
+  a2 = (float)(cal->xfb[3]) / X;
+  a2 *= (float)(cal->x[4] * 2);
+  a2 *= -1.0;
+  a2 += (float) cal->x[3];
+  /* xmin */
+  p->params[0] = (int)((a1+a2)/2);
+
+  a1 = (float)(cal->yfb[0]) / Y;
+  a1 *= (float)(cal->y[4] * 2);
+  a1 += (float) cal->y[0];
+  a2 = (float)(cal->yfb[1]) / Y;
+  a2 *= (float)(cal->y[4] * 2);
+  a2 += (float) cal->y[1];
+  /* ymin */
+  p->params[2] = (int)((a1+a2)/2);
+
+  a1 = (float)(Y - cal->yfb[2]) / Y;
+  a1 *= (float)(cal->y[4] * 2);
+  a1 *= -1.0;
+  a1 += (float) cal->y[2];
+  a2 = (float)(Y - cal->yfb[3]) / Y;
+  a2 *= (float)(cal->y[4] * 2);
+  a2 *= -1.0;
+  a2 += (float) cal->y[3];
+  /* ymax */
+  p->params[3] = (int)((a1+a2)/2);
+  
+}
+
+/*
  * sorting functions for qsort
  */
 
@@ -250,7 +270,7 @@ static int sort_by_y (const void* a, const void *b)
    return (((struct ts_sample *)a)->y - ((struct ts_sample *)b)->y);
 }
 /*****************************************************************/
-#endif
+#endif /* ifdef ARM_TARGET */
 
 static int
 timediff (struct timeval *starttime,
@@ -329,7 +349,7 @@ get_wintype_prop (Display *dpy, Window w)
   return winNormalAtom;
 }
 
-/**NOTE: modifications based on tslib code*/
+/**NOTE: modifications based on tslib and xinput example code*/
 /*
  * read events & draw graphics
  */
@@ -386,14 +406,13 @@ calibration_event_loop (void)
       int trans_x = 0;
       int trans_y = 0;
 
-/* for some reason XInput provides different raw data than ts_read */
 	int ret;
 	index = 0;
 	do {
 		if (index < MAX_SAMPLES-1)
 			index++;
 		if (ts_read_raw(ts, &samp[index], 1) < 0) {
-			perror("ts_read");
+			ERROR("ts_read");
 			exit(1);
 		}
 	} while (samp[index].pressure > 0);
@@ -445,14 +464,14 @@ calibration_event_loop (void)
 		  cal.y[4] = cal.y[0] - ((cal.y[0] - cal.y[3])/2);
 
 
-	   /* we are finished, calculate extrapolated min and max values
+	   /* calculate extrapolated min and max values
 		* give parameters to xserver */
-	   int minx, maxx, miny, maxy;
-	   extrapolate_dev_coords(&minx, &maxx, &miny, &maxy, &cal, &xinfo);
+	   cal_evdev result;
+       extrapolate_dev_coords(&result, &cal, &xinfo);
 
 	   /* FIXME: currently HAL support is not available in xserver, let's write
 		* to Xorg.conf... */
-		if (!write_config(minx, maxx, miny, maxy)) {
+        if (!write_config(&result)) {
 		   ERROR ("Could not write xorg.conf\n");
 		   goto exit;
 		}
@@ -461,15 +480,12 @@ calibration_event_loop (void)
 
 		  draw_screen (&xinfo, ACTIVE_HOTSPOT, TAP_COMPLETE);
 
+		  /* set calibration device property */
+		  set_calibration_prop (&xinfo, &result);
+
 		  XFlush (xinfo.dpy);
 		  XSync (xinfo.dpy, 1);
 
-		  usleep (2500000);
-
-		  /* FIXME temporary solution until HAL can be used */
-		  draw_screen (&xinfo, ACTIVE_HOTSPOT, TAP_RESTART);
-		  XFlush (xinfo.dpy);
-		  XSync (xinfo.dpy, 1);
 		  usleep (2500000);
 
 		  goto exit;
@@ -498,7 +514,7 @@ calibration_event_loop (void)
 	    goto exit;
 	  }
 	}
-#endif
+#endif /* ifdef ARM_TARGET */
 
       /*
        * other events ...
@@ -556,7 +572,7 @@ calibration_event_loop (void)
 	draw_screen (&xinfo, ACTIVE_HOTSPOT, 0);
 	XFlush(xinfo.dpy);
 	break;
-#endif
+#endif /* ifndef ARM_TARGET */
 
       case Expose:
 	if (ev.xexpose.count == 0)
@@ -606,7 +622,7 @@ int main (int argc, char **argv)
      	ERROR("ts_config");
 		exit(1);
   }
-#endif
+#endif /* ifdef ARM_TARGET */
 
   if (!init_graphics (&xinfo))
   {
@@ -631,18 +647,9 @@ int main (int argc, char **argv)
   {
     goto away;
   }
-#endif
 
-/*NOTE using XSelectExtensionEvent */
-/*
-  if (XGrabKeyboard(xinfo.dpy,
-                    xinfo.win,
-                    False,
-                    GrabModeAsync,
-                    GrabModeAsync,
-                    CurrentTime) == AlreadyGrabbed)
-    goto away;
-*/
+#else
+
   XGrabPointer (xinfo.dpy,
 		xinfo.win,
 		False,
@@ -652,6 +659,14 @@ int main (int argc, char **argv)
 		xinfo.win,
 		None,
 		CurrentTime);
+#endif /* ifdef ARM_TARGET */
+
+    XGrabKeyboard(xinfo.dpy,
+                    xinfo.win,
+                    False,
+                    GrabModeAsync,
+                    GrabModeAsync,
+                    CurrentTime);
 
   /* copy hotspot locations to calibration struct */
 

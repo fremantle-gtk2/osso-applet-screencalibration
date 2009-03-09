@@ -1,3 +1,13 @@
+2009-03-09 Peter Aradi <peter.aradi@blumsoft.eu>
+	* src/main.c:
+	reset_calibration fixed (restore default values)
+	* src/gfx.c:
+	* src/gfx.h:
+        * src/common.h:
+	Restart not required after calibration. "Evdev Axis Calibration" device property
+	is set for touchscreen.
+	Fixes: NB#95802 - Screen Calibration utility is missing.
+
 2009-02-15 Peter Aradi <peter.aradi@blumsoft.eu>
 	* src/main.c:
         * src/common.h:
@@ -8,7 +18,6 @@
 	written in xorg.conf, because HAL support is not available in xserver.
 	FIXME: extrapolated values are close to reported raw coordinates in
 	corners, but touchscreen seems inaccurate with them!
-	Fixes: #NB95802
 
         * etc/Makefile.am:
         * debian/osso-applet-screencalibration.prerm:
