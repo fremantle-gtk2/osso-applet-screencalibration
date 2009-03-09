@@ -55,6 +55,28 @@ get_window_property(Display *dpy, XID xid, char *prop)
     }
 }
 
+/* Apply calibration values by setting touchscreen device property 
+ * cal_evdev contains: min x, max x, min y, max y */
+void
+set_calibration_prop (x_info *xinfo, cal_evdev *p)
+{
+  int i;
+  char *data = calloc (4,4);
+  if (!xinfo || !p)
+    return;
+
+  Atom prop = XInternAtom(xinfo->dpy, "Evdev Axis Calibration", False);
+
+  for (i = 0; i < 4; i++) {
+	  *(((int32_t*)data) + i) = p->params[i];
+	}
+
+  XChangeDeviceProperty(xinfo->dpy, xinfo->pointer, prop, XA_INTEGER, 32,
+						PropModeReplace, (unsigned char*)data, 4);
+
+  XCloseDevice(xinfo->dpy, xinfo->pointer);
+  free (data);
+}
 
 static void
 change_active_target (x_info *xinfo)
@@ -78,16 +100,17 @@ init_input (x_info* xinfo)
   XDeviceInfo *info;
   int          ndevices,
                i;
-  XDevice     *pointer = NULL;
-  XDevice 	*keyboard = NULL;
+
   XEvent       ev;
   XEventClass  cls[4];
 
   if (!xinfo)
     return 0;
 
-  XQueryInputVersion(xinfo->dpy, XI_2_Major, XI_2_Minor);
+  xinfo->pointer = NULL;
+  xinfo->keyboard = NULL;
 
+  XQueryInputVersion(xinfo->dpy, XI_2_Major, XI_2_Minor);
   
   info = XListInputDevices(xinfo->dpy, &ndevices);
 
@@ -99,8 +122,8 @@ init_input (x_info* xinfo)
       case IsXExtensionPointer:
       /* physical device for touchscreen */
 	    /* open touchscreen */
-	    if (!pointer) {
-		    pointer = XOpenDevice(xinfo->dpy, current->id);
+	    if (!xinfo->pointer) {
+		    xinfo->pointer = XOpenDevice(xinfo->dpy, current->id);
 	    }
 	    break;
 
@@ -115,18 +138,18 @@ init_input (x_info* xinfo)
         break;
       case IsXKeyboard:
       /* master keyboard */
-	    if (!keyboard)
-		   keyboard = XOpenDevice(xinfo->dpy, current->id);
+	    if (!xinfo->keyboard)
+		   xinfo->keyboard = XOpenDevice(xinfo->dpy, current->id);
         break;
         }
     }
 
     XFreeDeviceList(info);
 
-    DeviceButtonPress(pointer, evtypes[TYPE_BPRESS], cls[0]);
-    DeviceButtonRelease(pointer, evtypes[TYPE_BRELEASE], cls[1]);
-	DeviceMotionNotify (pointer, evtypes[TYPE_MOTION], cls[2]);
-	DeviceKeyRelease (keyboard, evtypes[TYPE_KRELEASE], cls[3]);
+    DeviceButtonPress(xinfo->pointer, evtypes[TYPE_BPRESS], cls[0]);
+    DeviceButtonRelease(xinfo->pointer, evtypes[TYPE_BRELEASE], cls[1]);
+	DeviceMotionNotify (xinfo->pointer, evtypes[TYPE_MOTION], cls[2]);
+	DeviceKeyRelease (xinfo->keyboard, evtypes[TYPE_KRELEASE], cls[3]);
     XSelectExtensionEvent(xinfo->dpy, xinfo->win, cls, 4);
 
 	/* register for other events */
@@ -207,11 +230,9 @@ init_graphics (x_info *xinfo)
       char path[256];
 
       /* FIXME: Temporary solution until themes deliver the images */
-/*      snprintf (path, 256, "/usr/share/themes/default/images/qgn_plat_cpa_screen_calib_target_passive.png"); */
       snprintf (path, 256, "/usr/share/pixmaps/qgn_plat_cpa_screen_calib_target_active.png");
       xinfo->target_active = cairo_image_surface_create_from_png (path);
 
-/*      snprintf (path, 256, "/usr/share/themes/default/images/qgn_plat_cpa_screen_calib_target_passive.png"); */
       snprintf (path, 256, "/usr/share/pixmaps/qgn_plat_cpa_screen_calib_target_passive.png");
       xinfo->target_passive = cairo_image_surface_create_from_png (path);
 
@@ -506,7 +527,7 @@ draw_instructions (x_info *xinfo, int active, uint info)
 
   draw_rect (xinfo, 0, xinfo->yres/2 - 3*h, xinfo->xres, 6*h, 1.0, 1.0, 1.0, 1.0);
 
-  if (info != TAP_COMPLETE || info != TAP_RESTART)
+  if (info != TAP_COMPLETE)
     draw_text_center(xinfo, xinfo->yres/2 - 2*h, _("scca_fi_calibrate"));
 
   switch (info)
@@ -520,16 +541,11 @@ draw_instructions (x_info *xinfo, int active, uint info)
     case TAP_COMPLETE :
       snprintf(buffer, 256, _("scca_ib_calib_success"));
       break;
-   /*FIXME temporary solution until HAL support is ok in xserver */
-   case TAP_RESTART :
- 	  snprintf (buffer, 256, \
-			  "Please restart the device for the calibration to take effect!");
-      break;
     }
 
   draw_text_center(xinfo, xinfo->yres/2, buffer);
 
-   if (info == TAP_COMPLETE || info == TAP_RESTART)
+   if (info == TAP_COMPLETE)
       return;
 
   /*

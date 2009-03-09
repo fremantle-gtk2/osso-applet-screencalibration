@@ -31,6 +31,7 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
+#include <X11/extensions/XInput.h>
 
 #include <cairo.h>
 #include <cairo-xlib.h>
@@ -56,6 +57,9 @@ typedef struct x_info_struct
   Colormap cmap;
   Window win;
   GC gc;
+
+  XDevice   *pointer;
+  XDevice   *keyboard;
 
   int screen;
   int depth;
