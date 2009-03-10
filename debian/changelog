@@ -9,6 +9,7 @@ osso-applet-screencalibration (1.5-1) unstable; urgency=low
   * src/main.c: gtk_init is called
   * src/Makefile.am: gtk dependency needed
   * Kimmo: remove auto-generated files from SVN.
+  * Kimmo: added libts-dev to build-dependencies.
 
  -- Peter Aradi <peter.aradi@blumsoft.eu>  Tue, 10 Mar 2009 13:51:48 +0200
 
