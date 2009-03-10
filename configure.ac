@@ -1,7 +1,6 @@
-
 AC_PREREQ(2.59)
 
-AC_INIT(osso-applet-screencalibration, 1.4, tapani.palli@nokia.com)
+AC_INIT(osso-applet-screencalibration, 1.5, peter.aradi@blumsoft.eu)
 AM_INIT_AUTOMAKE(AC_PACKAGE_NAME, AC_PACKAGE_VERSION)
 AM_CONFIG_HEADER(config.h)
 

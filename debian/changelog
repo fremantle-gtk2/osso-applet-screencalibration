@@ -1,5 +1,6 @@
-osso-applet-screencalibration (1.5-1~unreleased) unstable; urgency=low
+osso-applet-screencalibration (1.5-1) unstable; urgency=low
 
+  * Fixes: NB#95802 - Screen Calibration utility is missing.
   * debian/rules: package provides needed icons, until themes include them
     again (temporary solution)
   * src/gfx.c:

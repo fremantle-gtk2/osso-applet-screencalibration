@@ -1,17 +1,27 @@
+2009-03-10  Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>
+
+	Release 1.5
+
+	Removed auto-generated files and fixed building.
+
+	* configure.ac: 1.5
+
 2009-03-09 Peter Aradi <peter.aradi@blumsoft.eu>
+
 	* src/main.c:
 	reset_calibration fixed (restore default values)
 	* src/gfx.c:
 	* src/gfx.h:
-        * src/common.h:
-	Restart not required after calibration. "Evdev Axis Calibration" device property
-	is set for touchscreen.
+	* src/common.h:
+	Restart not required after calibration. "Evdev Axis Calibration"
+	device property is set for touchscreen.
 	Fixes: NB#95802 - Screen Calibration utility is missing.
 
 2009-02-15 Peter Aradi <peter.aradi@blumsoft.eu>
+
 	* src/main.c:
-        * src/common.h:
-      	Major update, porting to evdev driver.
+	* src/common.h:
+	Major update, porting to evdev driver.
 	tslib is used for reading device coordinates as a workaround;
 	xinput did not report correct values, xsp is no longer available.
 	FIXME: Extrapolated min and max values for coordinates are currently 
@@ -19,16 +29,16 @@
 	FIXME: extrapolated values are close to reported raw coordinates in
 	corners, but touchscreen seems inaccurate with them!
 
-        * etc/Makefile.am:
-        * debian/osso-applet-screencalibration.prerm:
-        * debian/osso-applet-screencalibration.postinst:
-        * debian/dirs:
-        * src/launch.c:
-        * etc/tscalibrate.sudoers:
+	* etc/Makefile.am:
+	* debian/osso-applet-screencalibration.prerm:
+	* debian/osso-applet-screencalibration.postinst:
+	* debian/dirs:
+	* src/launch.c:
+	* etc/tscalibrate.sudoers:
 	Added tscalibrate binary to sudoers: currently required for writing
 	xorg.conf and for tslib.
 
-        * configure.ac:
+	* configure.ac:
 	* src/Makefile.am:
 	Added Xi to dependencies, removed gtk from applet.
 
@@ -36,8 +46,8 @@
 	Removed invalid gtk dependency. Using Xinput2 for input event handling.
 	FIXME: added temporary notification for device restart. (this will be
 	fixed once HAL support is available for calibration in xserver)
-        
-        * etc/tscalibrate.desktop:
+
+	* etc/tscalibrate.desktop:
 	Corrected "X-Text-Domain" field once again.
 
 	Removed unnecesary files from repository.
