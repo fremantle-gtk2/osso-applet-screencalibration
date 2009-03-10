@@ -1,4 +1,4 @@
-osso-applet-screencalibration (1.4.5-34) unstable; urgency=low
+osso-applet-screencalibration (1.5-1~unreleased) unstable; urgency=low
 
   * debian/rules: package provides needed icons, until themes include them
     again (temporary solution)
@@ -7,8 +7,9 @@ osso-applet-screencalibration (1.4.5-34) unstable; urgency=low
     FIXME Icons are provided by the package for now.
   * src/main.c: gtk_init is called
   * src/Makefile.am: gtk dependency needed
+  * Kimmo: remove auto-generated files from SVN.
 
- -- Peter Aradi <peter.aradi@blumsoft.eu>  Thu, 18 Dec 2008 16:24:59 +0100
+ -- Peter Aradi <peter.aradi@blumsoft.eu>  Tue, 10 Mar 2009 13:51:48 +0200
 
 osso-applet-screencalibration (1.4.5-33) unstable; urgency=low
 
