@@ -11,14 +11,14 @@ AC_HEADER_STDC
 
 PKG_PROG_PKG_CONFIG
 
-if test x`dpkg --print-architecture` = xarmel; then \
-	TARGET_ARCH=ARM_TARGET; \
-	PKG_CHECK_MODULES(TS, tslib-0.0) \
-	AC_SUBST(TS_LIBS) \
-	AC_SUBST(TS_CFLAGS) \
-	else \
-	TARGET_ARCH=X86_TARGET; \
-fi;
+#if test x`dpkg --print-architecture` = xarmel; then \
+#	TARGET_ARCH=ARM_TARGET; \
+#	PKG_CHECK_MODULES(TS, tslib-0.0) \
+#	AC_SUBST(TS_LIBS) \
+#	AC_SUBST(TS_CFLAGS) \
+#	else \
+#	TARGET_ARCH=X86_TARGET; \
+#fi;
 
 AC_SUBST(TARGET_ARCH)
 
