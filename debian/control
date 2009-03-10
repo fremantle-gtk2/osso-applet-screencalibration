@@ -3,7 +3,7 @@ Section: x11
 Priority: optional
 Maintainer: Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>
 Standards-Version: 3.6.0
-Build-Depends: debhelper (>= 4.0.0), autoconf, automake1.7, pkg-config, libgtk2.0-dev, libglib2.0-dev, hildon-control-panel-dev (>=1.0.0-1), libxsp-dev, libosso-dev, libdbus-1-dev, libx11-dev | xlibs-dev, libts-dev
+Build-Depends: debhelper (>= 4.0.0), autoconf, automake1.7, pkg-config, libgtk2.0-dev, libglib2.0-dev, hildon-control-panel-dev (>=1.0.0-1), libxsp-dev, libosso-dev, libdbus-1-dev, libx11-dev | xlibs-dev, libts-dev, libxi-dev
 
 Package: osso-applet-screencalibration
 Section: libs
