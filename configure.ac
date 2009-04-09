@@ -1,6 +1,6 @@
 AC_PREREQ(2.59)
 
-AC_INIT(osso-applet-screencalibration, 1.5, peter.aradi@blumsoft.eu)
+AC_INIT(osso-applet-screencalibration, 1.6, peter.aradi@blumsoft.eu)
 AM_INIT_AUTOMAKE(AC_PACKAGE_NAME, AC_PACKAGE_VERSION)
 AM_CONFIG_HEADER(config.h)
 
@@ -10,16 +10,23 @@ AC_HEADER_STDC
 
 PKG_PROG_PKG_CONFIG
 
-#if test x`dpkg --print-architecture` = xarmel; then \
-#	TARGET_ARCH=ARM_TARGET; \
-#	PKG_CHECK_MODULES(TS, tslib-0.0) \
-#	AC_SUBST(TS_LIBS) \
-#	AC_SUBST(TS_CFLAGS) \
-#	else \
-#	TARGET_ARCH=X86_TARGET; \
-#fi;
+if test x`dpkg --print-architecture` = xarmel; then \
+	AC_DEFINE(ARM_TARGET, 1, [Description]) \
+	else \
+	AC_DEFINE(X86_TARGET, 1, [Description]) \
+fi;
 
-AC_SUBST(TARGET_ARCH)
+AC_ARG_ENABLE(debug, [AC_HELP_STRING([--enable-debug],[Debug (default=no)])],
+                            [hildon_use_debug=yes],[hildon_use_debug=no])
+
+if test "x${hildon_use_debug}" = "xyes"
+then
+   CFLAGS="$CFLAGS -ggdb -O0 -DDEBUG"
+else
+   CFLAGS="$CFLAGS -O2"
+fi
+
+AC_SUBST(CFLAGS)
 
 # dependencies
 PKG_CHECK_MODULES(CAIRO, cairo)

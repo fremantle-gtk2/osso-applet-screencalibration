@@ -24,6 +24,9 @@
 
 #ifndef _OSSO_APPLET_SCREENCALIBRATION_GRAPHICS_H_
 #define _OSSO_APPLET_SCREENCALIBRATION_GRAPHICS_H_
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <stdlib.h>
 #include <math.h>

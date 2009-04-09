@@ -24,6 +24,10 @@
 #ifndef _OSSO_APPLET_SCREENCALIBRATION_COMMON_H_
 #define _OSSO_APPLET_SCREENCALIBRATION_COMMON_H_
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdio.h>
 #include <locale.h>
 #include <libintl.h>
@@ -50,6 +54,13 @@ enum
 typedef struct {
    int params[4];
 } cal_evdev;
+
+/* struct for storing raw information read from touchscreen */
+typedef struct {
+   int x;
+   int y;
+/* pressure is currently not used */
+} ts_sample;
 
 #define uint unsigned int
 
