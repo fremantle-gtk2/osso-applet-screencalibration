@@ -1,3 +1,14 @@
+osso-applet-screencalibration (1.6-1) unstable; urgency=low
+
+  * Fixes: NB#105334 - "TOP 10: 'Tap closer to target <n>' is not
+    displayed..."
+  * Fixes: NB#105331 - "screen calibration applet still asks to press
+    'ESC' key..."
+  * Fixes: NB#105917 - "After Screen calibration process , window gets
+    minimized."
+
+ -- Peter Aradi <peter.aradi@blumsoft.eu>  Thu,  9 Apr 2009 18:34:31 +0300
+
 osso-applet-screencalibration (1.5-1) unstable; urgency=low
 
   * Fixes: NB#95802 - Screen Calibration utility is missing.
