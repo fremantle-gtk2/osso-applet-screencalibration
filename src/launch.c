@@ -21,6 +21,9 @@
  * 02110-1301 USA
  *
  */  
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,8 +36,6 @@
 #include <gdk/gdkx.h>
 #include <gtk/gtk.h>
 #include <hildon-cp-plugin/hildon-cp-plugin-interface.h>
-
-#include "config.h"
 
 /* sudo needed on device for accessing files in /etc and using tslib */
 #ifdef ARM_TARGET

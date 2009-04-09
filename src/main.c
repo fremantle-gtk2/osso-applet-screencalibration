@@ -21,10 +21,16 @@
  * 02110-1301 USA
  *
  */  
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+#include <errno.h>
+#include <linux/input.h>
+#include <fcntl.h>
 
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
@@ -33,7 +39,6 @@
 #include "calibration.h"
 #include "common.h"
 #include "gfx.h"
-#include <tslib.h>
 
 #define HOTSPOT_AMOUNT 3
 
@@ -45,9 +50,9 @@ static calibration cal;
 #ifdef ARM_TARGET
 #define DEFAULT_CAL_PARAMS "14114 18 -2825064 34 -8765 32972906 65536"
 #define DEFAULT_EVDEV_PARAMS "200 3910 3761 180"
-#define XCONF "/etc/xorg.conf-RX-51.default"
-#define CANCEL 22
-static struct tsdev *ts;
+#define XCONF "/usr/share/hal/fdi/policy/10osvendor/10-x11-input.fdi"
+#define MAX_SAMPLES 256
+static int ts, kb;
 static calibration defcal;
 #endif /* ifdef ARM_TARGET */
 
@@ -62,30 +67,29 @@ closing_procedure (void)
 
 #ifdef ARM_TARGET
 /*****************************************************************/
-/* Write Xorg.conf with new calibration parameters */
+/* Write x11-input.fdi with new calibration parameters */
 static int write_config (cal_evdev *p) {
   char * line = NULL;
   size_t len = 0;
   ssize_t read;
-  const char* expr1 = "Touchscreen";
+  const char* expr1 = "input.touchpad";
   const char* expr2 = "Calibration";
   char section_ts = 0;
-  char temp_filename[] = "/etc/xorg.confXXXXXX";
+  char temp_filename[] = "/usr/share/x11-input.fdi.XXXXXX";
   int fd;
   int i;
   FILE* fp_conf = fopen (XCONF, "r");
   char* calibration_values = calloc (512,sizeof(char));
 
   /*FIXME rotation components are currently not used by xserver, set to 0 */
-  i = snprintf (calibration_values, 512, "         Option       \
-	 \"Calibration\"   \"%d %d %d %d %d %d\"\n", p->params[0], p->params[1],
+  i = snprintf (calibration_values, 512, "\t\t\t<merge key=\"input.x11_options.Calibration\" type=\"string\">%d %d %d %d %d %d</merge>\n", p->params[0], p->params[1],
 	 p->params[2], p->params[3], 0,0);
   
   if (i<=0)
 	 goto error;
 
   if (!fp_conf){
-	 ERROR ("could not open xorg.conf\n");
+	 ERROR ("could not open %s\n", XCONF);
 	 goto error;
   }
   
@@ -263,11 +267,11 @@ extrapolate_dev_coords (cal_evdev *p, calibration* cal, x_info* xinfo)
 
 static int sort_by_x (const void* a, const void *b)
 {
-   return (((struct ts_sample *)a)->x - ((struct ts_sample *)b)->x);
+   return (((ts_sample *)a)->x - ((ts_sample *)b)->x);
 }
 static int sort_by_y (const void* a, const void *b)
 {
-   return (((struct ts_sample *)a)->y - ((struct ts_sample *)b)->y);
+   return (((ts_sample *)a)->y - ((ts_sample *)b)->y);
 }
 /*****************************************************************/
 #endif /* ifdef ARM_TARGET */
@@ -349,7 +353,77 @@ get_wintype_prop (Display *dpy, Window w)
   return winNormalAtom;
 }
 
-/**NOTE: modifications based on tslib and xinput example code*/
+#ifdef ARM_TARGET
+static int read_ts_events (int dev, ts_sample* samp) {
+  struct input_event ev[512];
+  int read_bytes;
+  int index = 0;
+  int yalv;
+  errno = 0;
+
+  read_bytes = read(dev, ev, sizeof(struct input_event) * 512);
+
+  if (read_bytes == -1) {
+	if (errno == EAGAIN) {
+	  return 0;
+    } else { return -1;	}
+  }
+    
+  if (read_bytes < (int) sizeof(struct input_event)) {
+    perror("evdev: short read");
+    exit (1);
+  }
+
+  for (yalv = 0; yalv < (int) (read_bytes / sizeof(struct input_event)) 
+	   && index < MAX_SAMPLES; yalv++)
+  {
+       if (ev[yalv].type == EV_ABS ) {
+	     switch (ev[yalv].code) {
+		   case ABS_X:
+     		 samp[index].x = ev[yalv].value; 
+			 break;
+		   case ABS_Y:
+   			 samp[index].y = ev[yalv].value;
+			 break;
+	     }
+		 if (samp[index].x && samp[index].y)
+			index++;
+	   }
+  }
+  return index;
+}
+
+static int read_key_events (int dev, int* keys) {
+  struct input_event ev[512];
+  int read_bytes;
+  int index = 0;
+  int yalv;
+  errno = 0;
+
+  read_bytes = read(dev, ev, sizeof(struct input_event) * 512);
+  
+  if (read_bytes == -1) {
+	if (errno == EAGAIN) {
+	  return 0;
+    } else { return -1;	}
+  }
+  if (read_bytes < (int) sizeof(struct input_event)) {
+    perror("evdev: short read");
+    exit (1);
+  }
+
+  for (yalv = 0; yalv < (int) (read_bytes / sizeof(struct input_event)) 
+	   && index < MAX_SAMPLES; yalv++) {
+    if (ev[yalv].type == EV_KEY) {
+    /* add keycode when released */
+	  if (ev[yalv].value == 0)
+		 keys[index++] = ev[yalv].code;
+	}
+  }
+  return index;
+}
+#endif /* #ifdef ARM_TARGET */
+
 /*
  * read events & draw graphics
  */
@@ -364,8 +438,7 @@ calibration_event_loop (void)
   unsigned int i;
 
 #ifdef ARM_TARGET
-#define MAX_SAMPLES 256
-  struct ts_sample samp[MAX_SAMPLES];
+  ts_sample *samp = NULL;
 #endif
 
   draw_screen (&xinfo, ACTIVE_HOTSPOT, TAP_NEXT_TARGET);
@@ -374,78 +447,56 @@ calibration_event_loop (void)
   /* swallow events */
   XFlush (xinfo.dpy);
   XSync (xinfo.dpy, 1);
-
   usleep (250000);
 
-  
-  XSynchronize (xinfo.dpy, True);
   for (;;)
     {
-      event_amount = XEventsQueued (xinfo.dpy, QueuedAfterReading);
-
-      if (event_amount < 1)
-	{
-	  blit_active_hotspot (&xinfo, ACTIVE_HOTSPOT);
-	  XFlush(xinfo.dpy);
-	  usleep (ANIM_TIMEOUT);
-	  continue;
-	}
-
-      XNextEvent (xinfo.dpy, &ev);
+      usleep (20000);
 
 #ifdef ARM_TARGET
-
-	if (ev.type == evtypes[TYPE_MOTION] || \
-		ev.type == evtypes[TYPE_BPRESS] || \
-		ev.type == evtypes[TYPE_BRELEASE])
-    {
       int index   = 0;
       int middle  = 0;
       int raw_x   = 0;
       int raw_y   = 0;
       int trans_x = 0;
       int trans_y = 0;
+ 
+	  int ret;
 
-	int ret;
-	index = 0;
-	do {
-		if (index < MAX_SAMPLES-1)
-			index++;
-		if (ts_read_raw(ts, &samp[index], 1) < 0) {
-			ERROR("ts_read");
-			exit(1);
+	  if (samp) free(samp);
+	  samp = calloc (MAX_SAMPLES, sizeof (ts_sample));
+
+      index = read_ts_events (ts, samp);
+
+	  if (index == -1) {
+		 perror ("error reading samples from touchscreen");
+		 goto exit;
+	  } else if (index)
+	  {
+	    middle = index/2;
+		qsort(samp, index, sizeof(ts_sample), sort_by_x);
+		if (index & 1){
+		  raw_x = samp[middle].x;
+		} else {
+		  raw_x = (samp[middle-1].x + samp[middle].x) / 2;
 		}
-	} while (samp[index].pressure > 0);
-	
-	XFlush(xinfo.dpy);
-	XSync (xinfo.dpy,1);
 
-	middle = index/2;
+		qsort(samp, index, sizeof(ts_sample), sort_by_y);
+		if (index & 1) {
+		  raw_y = samp[middle].y;
+		} else {
+		  raw_y = (samp[middle-1].y + samp[middle].y) / 2;
+		}
+      
 
-	qsort(samp, index, sizeof(struct ts_sample), sort_by_x);
-	if (index & 1){
-	  raw_x = samp[middle].x;
-	}
-    else {
-      raw_x = (samp[middle-1].x + samp[middle].x) / 2;
-    }
+		trans_x = raw_x;
+		trans_y = raw_y;
 
-	qsort(samp, index, sizeof(struct ts_sample), sort_by_y);
-    if (index & 1) {
-      raw_y = samp[middle].y;
-    }
-    else {
-      raw_y = (samp[middle-1].y + samp[middle].y) / 2;
-    }
-
-	  trans_x = raw_x;
-	  trans_y = raw_y;
-
-	/*translate device coords to screen coords for deviation check */
-    translate (&xinfo, &trans_x, &trans_y);
+		/*translate device coords to screen coords for deviation check */
+		translate (&xinfo, &trans_x, &trans_y);
 
 #define POINT_MAX_DISTANCE 64
-	  if (distance (trans_x, trans_y,
+		if (distance (trans_x, trans_y,
 			xinfo.hotspots[ACTIVE_HOTSPOT].x,
 			xinfo.hotspots[ACTIVE_HOTSPOT].y) < POINT_MAX_DISTANCE)
 	    {
@@ -458,38 +509,33 @@ calibration_event_loop (void)
 	      xinfo.active_angle = 0;
 
 	      if (ACTIVE_HOTSPOT > HOTSPOT_AMOUNT)
-		{
-		  /* calculate center point */
-		  cal.x[4] = cal.x[0] - ((cal.x[0] - cal.x[1])/2);
-		  cal.y[4] = cal.y[0] - ((cal.y[0] - cal.y[3])/2);
+		  {
+		    /* calculate center point */
+		    cal.x[4] = cal.x[0] - ((cal.x[0] - cal.x[1])/2);
+		    cal.y[4] = cal.y[0] - ((cal.y[0] - cal.y[3])/2);
+            /* calculate extrapolated min and max values
+	        * give parameters to xserver */
+			cal_evdev result;
+			extrapolate_dev_coords(&result, &cal, &xinfo);
 
-
-	   /* calculate extrapolated min and max values
-		* give parameters to xserver */
-	   cal_evdev result;
-       extrapolate_dev_coords(&result, &cal, &xinfo);
-
-	   /* FIXME: currently HAL support is not available in xserver, let's write
-		* to Xorg.conf... */
-        if (!write_config(&result)) {
-		   ERROR ("Could not write xorg.conf\n");
+	   if (!write_config(&result)) {
+		   ERROR ("Could not write xinput fdi file\n");
 		   goto exit;
 		}
 
-		  ACTIVE_HOTSPOT = 42;
+		    ACTIVE_HOTSPOT = 42;
+		    draw_screen (&xinfo, ACTIVE_HOTSPOT, TAP_COMPLETE);
 
-		  draw_screen (&xinfo, ACTIVE_HOTSPOT, TAP_COMPLETE);
+		    /* set calibration device property */
+		    set_calibration_prop (&xinfo, &result);
 
-		  /* set calibration device property */
-		  set_calibration_prop (&xinfo, &result);
+		    XFlush (xinfo.dpy);
+		    XSync (xinfo.dpy, 1);
 
-		  XFlush (xinfo.dpy);
-		  XSync (xinfo.dpy, 1);
+		    usleep (2500000);
 
-		  usleep (2500000);
-
-		  goto exit;
-		}
+		    goto exit;
+		  }
 
 	      /* neeext! */
 	      draw_screen (&xinfo, ACTIVE_HOTSPOT, TAP_NEXT_TARGET);
@@ -502,27 +548,50 @@ calibration_event_loop (void)
 	    {
 	      draw_instructions (&xinfo, ACTIVE_HOTSPOT, TAP_CLOSER);
 	    }
-	} /* if it was tap or motion event */
-	else if (ev.type == evtypes[TYPE_KRELEASE]) {
-	XDeviceKeyEvent *key = (XDeviceKeyEvent *) &ev;
+	  } /* if there was any event on ts */
+
+	  /* check for keyboard input */
+	  int kev[MAX_SAMPLES];
+	  index = read_key_events (kb, kev);
 	
-	  if (key->keycode == CANCEL)
-	  {
-	    /*
-	     * user exit might be handled differently
-	     */
-	    goto exit;
+	  if (index == -1) {
+		 perror ("error reading samples from keypad");
+		 goto exit;
 	  }
-	}
+	  /* do something with the input */
+	  for (i=0; i<index; i++) {
+		 if (kev[i] == KEY_BACKSPACE)
+		   /* user exit */
+		   goto exit;
+	  }
 #endif /* ifdef ARM_TARGET */
 
       /*
        * other events ...
        */
+      event_amount = XEventsQueued (xinfo.dpy, QueuedAfterReading);
 
-      switch (ev.type)
+      if (event_amount < 1)
       {
-      case VisibilityNotify :
+	    blit_active_hotspot (&xinfo, ACTIVE_HOTSPOT);
+	    XFlush(xinfo.dpy);
+	    usleep (ANIM_TIMEOUT);
+	    continue;
+      }
+
+	  XNextEvent (xinfo.dpy, &ev);
+
+    switch (ev.type)
+    {
+	/* ConfigureNotify is received when the window's size, position, border or
+	 * stacking order changes
+	 * In either case we quit, to be on the safe side and assure that nothing
+	 * messes up the screen calibration */
+	case ConfigureNotify:
+    goto exit;
+    
+	case VisibilityNotify :
+	/* NOTE: old code, probably will be removed */
 	/* another window is on top of us -> exit */
 	if (((XVisibilityEvent *)&ev)->state != VisibilityUnobscured)
 	{
@@ -554,7 +623,7 @@ calibration_event_loop (void)
 	break;
 
 #ifndef ARM_TARGET
-      case ButtonRelease :
+    case ButtonRelease :
 	ACTIVE_HOTSPOT++;
 
 	xinfo.previous_angle = xinfo.active_angle;
@@ -574,23 +643,22 @@ calibration_event_loop (void)
 	break;
 #endif /* ifndef ARM_TARGET */
 
-      case Expose:
-	if (ev.xexpose.count == 0)
-	{
+    case Expose:
+	  if (ev.xexpose.count == 0)
+	  {
 	  /*
 	   * fullscreen draw
 	   */
-	  XClearWindow(xinfo.dpy, xinfo.win);
-	  draw_screen (&xinfo, ACTIVE_HOTSPOT, 0);
-	  XFlush(xinfo.dpy);
-	}
-	break;
+	    XClearWindow(xinfo.dpy, xinfo.win);
+        draw_screen (&xinfo, ACTIVE_HOTSPOT, 0);
+	    XFlush(xinfo.dpy);
+    	}
+	  break;
 
-      case ClientMessage:
-	goto exit;
+    case ClientMessage:
 	break;
-      }
-    }
+  	}
+  }
 
  exit:
   return;
@@ -608,19 +676,16 @@ int main (int argc, char **argv)
   bindtextdomain ("osso-applet-screencalibration", "/usr/share/locale");
   bind_textdomain_codeset("osso-applet-screencalibration", "UTF-8");
   textdomain("osso-applet-screencalibration");
-
-  char* tsdevice = strdup("/dev/input/ts");
-
+  
 #ifdef ARM_TARGET 
-  ts = ts_open(tsdevice,0);
-
-  if (!ts) {
-    	ERROR("ts_open");
-		exit(1);
+  if ((ts = open("/dev/input/ts", O_RDONLY | O_NONBLOCK)) < 0) {
+	perror("evdev open");
+	exit(1);
   }
-  if (ts_config(ts)) {
-     	ERROR("ts_config");
-		exit(1);
+
+  if ((kb = open("/dev/input/keypad", O_RDONLY | O_NONBLOCK)) < 0) {
+	perror("evdev open");
+	exit(1);
   }
 #endif /* ifdef ARM_TARGET */
 
@@ -661,12 +726,15 @@ int main (int argc, char **argv)
 		CurrentTime);
 #endif /* ifdef ARM_TARGET */
 
-    XGrabKeyboard(xinfo.dpy,
+   int grab = XGrabKeyboard(xinfo.dpy,
                     xinfo.win,
                     False,
                     GrabModeAsync,
                     GrabModeAsync,
                     CurrentTime);
+   if (grab == AlreadyGrabbed) {
+/*	g_debug ("AlreadyGrabbed!");*/
+	}
 
   /* copy hotspot locations to calibration struct */
 

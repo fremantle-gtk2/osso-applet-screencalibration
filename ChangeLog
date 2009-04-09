@@ -1,3 +1,23 @@
+2009-04-09 Peter Aradi <peter.aradi@blumsoft.eu>
+	
+	* configure.ac:
+	* debian/control:
+	* main.c:
+	* gfx.c:
+	* gfx.h:
+	- removed tslib dependency, now reading from touchscreen device directly
+	Fixes: NB#105334 - "TOP 10: 'Tap closer to target <n>' is not
+	displayed..."
+	- using hal instead of xorg.conf
+	- changed 'esc' button to 'backspace' for cancelling the calibration
+	Fixes: NB#105331 - "screen calibration applet still asks to press
+	'ESC' key..."
+	- application exits if some window would get on top of it, to prevent
+	  user from accidentaly miscalibrating the device
+	
+	Fixes: NB#105917 - "After Screen calibration process , window gets
+	minimized."
+	
 2009-03-10  Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>
 
 	Release 1.5

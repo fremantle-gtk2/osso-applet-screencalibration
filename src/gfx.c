@@ -20,11 +20,15 @@
  * 02110-1301 USA
  *
  */  
-
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <time.h>
 #include "gfx.h"
 #include <X11/extensions/XInput.h>
+
+#define PATH_BACKSPACE "/usr/share/icons/hicolor/32x32/hildon/general_backspace.png"
 
 static uint rotation = 0;
 
@@ -138,19 +142,11 @@ init_input (x_info* xinfo)
         break;
       case IsXKeyboard:
       /* master keyboard */
-	    if (!xinfo->keyboard)
-		   xinfo->keyboard = XOpenDevice(xinfo->dpy, current->id);
         break;
         }
     }
 
     XFreeDeviceList(info);
-
-    DeviceButtonPress(xinfo->pointer, evtypes[TYPE_BPRESS], cls[0]);
-    DeviceButtonRelease(xinfo->pointer, evtypes[TYPE_BRELEASE], cls[1]);
-	DeviceMotionNotify (xinfo->pointer, evtypes[TYPE_MOTION], cls[2]);
-	DeviceKeyRelease (xinfo->keyboard, evtypes[TYPE_KRELEASE], cls[3]);
-    XSelectExtensionEvent(xinfo->dpy, xinfo->win, cls, 4);
 
 	/* register for other events */
     XSelectInput(xinfo->dpy, xinfo->win,
@@ -168,7 +164,7 @@ unsigned int
 init_graphics (x_info *xinfo)
 {
   XSetWindowAttributes wa;
-  Atom state_atom, fullscreen_atom;
+  Atom state_atom, fullscreen_atom, dnd_atom;
 
   memset (xinfo, 0, sizeof(x_info));
 
@@ -209,11 +205,18 @@ init_graphics (x_info *xinfo)
       return 0;
     }
 
+  /* set fullscreen atom */
   state_atom      = XInternAtom(xinfo->dpy, "_NET_WM_STATE", False);
   fullscreen_atom = XInternAtom(xinfo->dpy, "_NET_WM_STATE_FULLSCREEN", False);
 
   XChangeProperty(xinfo->dpy, xinfo->win, state_atom, XA_ATOM, 32,
                   PropModeReplace, (unsigned char *)&fullscreen_atom, 1);
+
+  /* set DoNotDisturb flag */
+  unsigned int set = 1;
+  dnd_atom       = XInternAtom(xinfo->dpy, "_HILDON_DO_NOT_DISTURB", False);
+  XChangeProperty(xinfo->dpy, xinfo->win, dnd_atom, XA_INTEGER, 32,
+                  PropModeReplace, (const unsigned char*)&set, 1);
 
   if (!init_input (xinfo))
 	 return 0;
@@ -515,7 +518,6 @@ blit_hotspots (x_info *xinfo, int active, double alpha)
   cairo_destroy(c);
 }
 
-
 void
 draw_instructions (x_info *xinfo, int active, uint info)
 {
@@ -558,23 +560,33 @@ draw_instructions (x_info *xinfo, int active, uint info)
   if (tmp)
     {
       int w1, w2, w3, xx;
-      unsigned char escape[4] = {0xEF, 0x80, 0x8A, '\0'};
-      unsigned char term[3] = {' ', ' ', '\0'};
-
-      tail = strstr(buffer,">");
+	  unsigned char term[3] = {' ', ' ', '\0'};
+	  cairo_surface_t* back = cairo_image_surface_create_from_png(PATH_BACKSPACE);
+	  cairo_status_t status = cairo_surface_status (back);
+      if (status) {
+	     ERROR ("Error reading %s\n", PATH_BACKSPACE);
+	  }
+	  cairo_t* ct_back = cairo_create (xinfo->main_surface);
+      
+	  tail = strstr(buffer,">");
       memcpy (tmp, &term, 3*sizeof(char));
 
       get_text_extents (xinfo, buffer, FONT, &w1, &h);
-      get_text_extents (xinfo, escape, "DeviceSymbols", &w2, &h);
+	  w2 = cairo_image_surface_get_width (back);
       get_text_extents (xinfo, tail, FONT, &w3, &h);
+	  h = cairo_image_surface_get_height (back);
 
       w1 += 10;
       w2 += 10;
 
       xx = (xinfo->xres - (w1+w2+w3))/2;
 
-      draw_text (xinfo, xx,       xinfo->yres/2 + h*2, FONT, buffer);
-      draw_text (xinfo, xx+w1,    xinfo->yres/2 + h*2, "DeviceSymbols", escape);
+	  draw_text (xinfo, xx,       xinfo->yres/2 + h*2, FONT, buffer);
+
+	  /* draw the icon for cancel */
+      cairo_set_source_surface (ct_back, back, xx+w1, xinfo->yres/2 + h);
+	  cairo_paint (ct_back);
+	  
       draw_text (xinfo, xx+w1+w2, xinfo->yres/2 + h*2, FONT, ++tail);
     }
 }
