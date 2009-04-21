@@ -25,7 +25,9 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <stdlib.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <signal.h>
 #include <errno.h>
@@ -76,7 +78,7 @@ static int write_config (cal_evdev *p) {
   const char* expr2 = "Calibration";
   char section_ts = 0;
   char temp_filename[] = "/usr/share/x11-input.fdi.XXXXXX";
-  int fd;
+  int fd = -1;
   int i;
   FILE* fp_conf = fopen (XCONF, "r");
   char* calibration_values = calloc (512,sizeof(char));
@@ -136,7 +138,7 @@ static int write_config (cal_evdev *p) {
 
 error:
   fclose (fp_conf);
-  close (fd);
+  if (fd != -1) { close (fd); }
   return 0;
 }
 
@@ -295,8 +297,6 @@ static void
 fade_away_loop (void)
 {
   struct timeval now, start;
-  double alpha=0;
-  int k;
 
   gettimeofday (&start, NULL);
   for (;;)
@@ -322,7 +322,7 @@ query_tree (x_info* xinfo, int w,  int *num_children)
 		       &root_win, 
 		       &parent_win, 
 		       &child_list,
-		       num_children);
+		       (unsigned int*) num_children);
 
   if (status == 0 || num_children == 0 || child_list == NULL)
     return NULL;
@@ -432,7 +432,6 @@ calibration_event_loop (void)
 {
   XEvent ev;
   int event_amount;
-  long key_pressed;
   int ACTIVE_HOTSPOT = 0;
 
   unsigned int i;
@@ -442,6 +441,9 @@ calibration_event_loop (void)
 #endif
 
   draw_screen (&xinfo, ACTIVE_HOTSPOT, TAP_NEXT_TARGET);
+  XFlush (xinfo.dpy); 
+  XSync (xinfo.dpy, 1); 
+
   blit_active_hotspot (&xinfo, ACTIVE_HOTSPOT);
 
   /* swallow events */
@@ -461,8 +463,6 @@ calibration_event_loop (void)
       int trans_x = 0;
       int trans_y = 0;
  
-	  int ret;
-
 	  if (samp) free(samp);
 	  samp = calloc (MAX_SAMPLES, sizeof (ts_sample));
 
@@ -528,10 +528,8 @@ calibration_event_loop (void)
 
 		    /* set calibration device property */
 		    set_calibration_prop (&xinfo, &result);
-
 		    XFlush (xinfo.dpy);
 		    XSync (xinfo.dpy, 1);
-
 		    usleep (2500000);
 
 		    goto exit;
@@ -539,14 +537,16 @@ calibration_event_loop (void)
 
 	      /* neeext! */
 	      draw_screen (&xinfo, ACTIVE_HOTSPOT, TAP_NEXT_TARGET);
-
 	      XFlush (xinfo.dpy);
-	      usleep (500000);
 	      XSync (xinfo.dpy, 1);
+	      usleep (500000);
+
 	    }
 	  else
 	    {
 	      draw_instructions (&xinfo, ACTIVE_HOTSPOT, TAP_CLOSER);
+	      XFlush (xinfo.dpy);
+		  XSync (xinfo.dpy, 1);
 	    }
 	  } /* if there was any event on ts */
 

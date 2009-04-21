@@ -110,4 +110,7 @@ draw_instructions (x_info *xinfo, int active, uint info);
 void
 draw_screen (x_info *xinfo, int active, uint info);
 
+void
+set_calibration_prop (x_info *xinfo, cal_evdev *p);
+
 #endif

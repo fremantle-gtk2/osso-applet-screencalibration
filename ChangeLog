@@ -1,4 +1,18 @@
+2009-04-21  Peter Aradi <peter.aradi@blumsoft.eu>
+
+	* src/gfx.c:
+	* src/gfh.h:
+	* src/main.c:
+	Removed compiler warnings.
+	Fixes: NB#111833 - "osso-applet-screencalibration:write_config may use
+	uninitiazed variable fd"
+	* src/gfx.c:
+	set WM_NAME to empty string.
+	Fixes: NB#111014 - "Screen calibration is seen in switcher view with
+	title unknown" 
+
 2009-04-17  Peter Aradi <peter.aradi@blumsoft.eu>
+	
 	* debian/control: added sudo to package dependencies
 
 2009-04-09  Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>
