@@ -32,33 +32,6 @@
 
 static uint rotation = 0;
 
-/*
- * retrieve window property, used for detecting theme
- */
-static char*
-get_window_property(Display *dpy, XID xid, char *prop)
-{
-  unsigned long n, extra;
-  Atom realType, p;
-  unsigned char *value = NULL;
-  int format;
-
-  p = XInternAtom (dpy, prop, False);
-  XGetWindowProperty(dpy, xid,
-                     p, 0L, 512L, False,
-                     AnyPropertyType, &realType, &format,
-                     &n, &extra, &value);
-  if (realType == XA_STRING)
-    {
-      return value;
-    }
-  else
-    {
-      XFree(value);
-      return NULL;
-    }
-}
-
 /* Apply calibration values by setting touchscreen device property 
  * cal_evdev contains: min x, max x, min y, max y */
 void
@@ -86,7 +59,6 @@ static void
 change_active_target (x_info *xinfo)
 {
   struct tm now;
-  cairo_surface_t *tmp;
 
   time_t x = time(NULL);
   localtime_r (&x, &now);
@@ -104,9 +76,6 @@ init_input (x_info* xinfo)
   XDeviceInfo *info;
   int          ndevices,
                i;
-
-  XEvent       ev;
-  XEventClass  cls[4];
 
   if (!xinfo)
     return 0;
@@ -164,7 +133,7 @@ unsigned int
 init_graphics (x_info *xinfo)
 {
   XSetWindowAttributes wa;
-  Atom state_atom, fullscreen_atom, dnd_atom;
+  Atom state_atom, fullscreen_atom, dnd_atom, name_atom;
 
   memset (xinfo, 0, sizeof(x_info));
 
@@ -217,6 +186,12 @@ init_graphics (x_info *xinfo)
   dnd_atom       = XInternAtom(xinfo->dpy, "_HILDON_DO_NOT_DISTURB", False);
   XChangeProperty(xinfo->dpy, xinfo->win, dnd_atom, XA_INTEGER, 32,
                   PropModeReplace, (const unsigned char*)&set, 1);
+
+  /* set _WM_NAME to empty string */
+  char empty = '\0';
+  name_atom       = XInternAtom(xinfo->dpy, "_NET_WM_NAME", False);
+  XChangeProperty(xinfo->dpy, xinfo->win, name_atom, XA_STRING, 8,
+                  PropModeReplace, (const unsigned char*)&empty, 1);
 
   if (!init_input (xinfo))
 	 return 0;
@@ -586,7 +561,7 @@ draw_instructions (x_info *xinfo, int active, uint info)
 	  /* draw the icon for cancel */
       cairo_set_source_surface (ct_back, back, xx+w1, xinfo->yres/2 + h);
 	  cairo_paint (ct_back);
-	  
+	  cairo_destroy (ct_back);
       draw_text (xinfo, xx+w1+w2, xinfo->yres/2 + h*2, FONT, ++tail);
     }
 }
@@ -595,7 +570,12 @@ draw_instructions (x_info *xinfo, int active, uint info)
 void
 draw_screen (x_info *xinfo, int active, uint info)
 {
+  XSync(xinfo->dpy, 1);
+
   draw_instructions (xinfo, active, info);
+  XSync(xinfo->dpy, 1);
+
   blit_hotspots (xinfo, active, 1.0);
+  XSync(xinfo->dpy, 1);
 }
 
