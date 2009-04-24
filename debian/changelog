@@ -1,3 +1,13 @@
+osso-applet-screencalibration (1.7-1) unstable; urgency=low
+
+  Peter:
+  * Fixes: NB#111833 - osso-applet-screencalibration:write_config may use
+    uninitiazed variable fd
+  * Fixes: NB#111014 - Screen calibration is seen in switcher view with
+    title unknown 
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Fri, 24 Apr 2009 12:30:28 +0300
+
 osso-applet-screencalibration (1.6-1) unstable; urgency=low
 
   * Fixes: NB#105334 - "TOP 10: 'Tap closer to target <n>' is not
