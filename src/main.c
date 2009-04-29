@@ -580,47 +580,10 @@ calibration_event_loop (void)
       }
 
 	  XNextEvent (xinfo.dpy, &ev);
+	  fprintf (stderr, "X event type: %d\n", ev.type);
 
     switch (ev.type)
     {
-	/* ConfigureNotify is received when the window's size, position, border or
-	 * stacking order changes
-	 * In either case we quit, to be on the safe side and assure that nothing
-	 * messes up the screen calibration */
-	case ConfigureNotify:
-    goto exit;
-    
-	case VisibilityNotify :
-	/* NOTE: old code, probably will be removed */
-	/* another window is on top of us -> exit */
-	if (((XVisibilityEvent *)&ev)->state != VisibilityUnobscured)
-	{
-	  int amount = 0, camount = 0, i = 0, j = 0;
-	  Window *list = query_tree (&xinfo, DefaultRootWindow (xinfo.dpy), &amount);
-	  Atom winNotificationAtom = XInternAtom (xinfo.dpy, "_NET_WM_WINDOW_TYPE_NOTIFICATION", False);
-	  unsigned int banner=0;
-
-	  for (i = 0; i < amount; i++) 
-	  {
-	    Window *child_list = query_tree (&xinfo, list[amount-1], &camount);
-
-	    for (j = 0; j < camount; j++) 
-	    {
-	      if (get_wintype_prop (xinfo.dpy, child_list[j]) == winNotificationAtom)
-	      {
-		banner = 1;
-	      }
-	    }
-	    if (child_list)
-	      XFree (child_list);
-	  }
-	  if (list)
-	    XFree (list);
-
-	  if (!banner)
-	    goto exit;
-	}
-	break;
 
 #ifndef ARM_TARGET
     case ButtonRelease :
@@ -655,13 +618,27 @@ calibration_event_loop (void)
     	}
 	  break;
 
-    case ClientMessage:
-	break;
-  	}
-  }
-
+    case ClientMessage:{
+	   /* Exit when another window gets on top of us. This seems to be always
+		* accompanied by a _GTK_DELETE_TEMPORARIES clientmessage (osso specific).
+		* Together with DnD flag, the applet does not display information
+		* banners, but closes when a dialog tries to get on top.
+		*
+		* TODO: find a better solution. this is based on a side-effect.
+		* but xinfo.win is not a hildon window, so is_topmost property 
+		* cannot be watched...
+		**/
+	  Atom mtype = ((XClientMessageEvent*)&ev)->message_type;
+	  Atom dt = XInternAtom (xinfo.dpy, "_GTK_DELETE_TEMPORARIES", False);
+	  if (mtype == dt)
+		 goto exit;
+	}
+	  break;
+	}
+	}
  exit:
   return;
+	
 }
 
 
