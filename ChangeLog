@@ -1,3 +1,12 @@
+2009-04-29  Peter Aradi <peter.aradi@blumsoft.eu>
+	* src/main.c:
+	Fixes: NB#112641 - "Incoming call UI is not shown when user tries to recieve call in Screen
+	calibration screen"
+	Fixes: NB#112645 - "Screen calibration applet is not closing once camera is
+	opened from h/w key"
+	Fixes: NB#110965 - "screencalibration applet is closed when charger is
+	connected" 
+
 2009-04-24  Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>
 
 	Release 1.7
