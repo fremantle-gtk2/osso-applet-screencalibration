@@ -1,3 +1,15 @@
+osso-applet-screencalibration (1.8-1) unstable; urgency=low
+
+  Peter:
+  * Fixes: NB#112641 - Incoming call UI is not shown when user tries to
+    receive call in Screen calibration screen
+  * Fixes: NB#112645 - Screen calibration applet is not closing once camera
+    is opened from h/w key
+  * Fixes: NB#110965 - screencalibration applet is closed when charger is
+    connected 
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Thu, 30 Apr 2009 09:11:27 +0300
+
 osso-applet-screencalibration (1.7-1) unstable; urgency=low
 
   Peter:
