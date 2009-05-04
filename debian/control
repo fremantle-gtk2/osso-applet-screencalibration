@@ -8,6 +8,7 @@ Build-Depends: debhelper (>= 4.0.0), autoconf, automake1.7, pkg-config, libgtk2.
 Package: osso-applet-screencalibration
 Section: libs
 Architecture: any
-Depends: osso-applet-screencalibration-l10n-mr0 | osso-applet-screencalibration-l10n-mr, ${shlibs:Depends}, hildon-control-panel (>=1.0.0-1), osso-icons, sudo
+Depends: osso-applet-screencalibration-l10n-mr0 | osso-applet-screencalibration-l10n-mr, ${shlibs:Depends}, hildon-control-panel (>=1.0.0-1), osso-icons
+Pre-Depends: sudo
 Description: Control Panel Screen calibration plugin
  Screencalibration executable and a plugin for the controlpanel.
