@@ -1,3 +1,11 @@
+2009-05-04  Peter Aradi <peter.aradi@blumsoft.eu>
+
+	* debian/osso-applet-screencalibration.postrm:
+	* debian/control:
+	Added Pre-Depends for sudo, moved update-sudoers call to .postrm
+	Fixes: NB#114096 - "osso-applet-screencalibration pre-removal script
+	fails"
+
 2009-04-30  Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>
 
 	Release 1.8
