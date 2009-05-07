@@ -1,3 +1,11 @@
+osso-applet-screencalibration (1.8-3) unstable; urgency=low
+
+  Peter:
+  * Fixes: NB#114096 - osso-applet-screencalibration pre-removal script
+    fails  (second try)
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Thu,  7 May 2009 16:21:37 +0300
+
 osso-applet-screencalibration (1.8-2) unstable; urgency=low
 
   Peter:
