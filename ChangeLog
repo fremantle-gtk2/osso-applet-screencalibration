@@ -1,3 +1,10 @@
+2009-05-07  Peter Aradi <peter.aradi@blumsoft.eu>
+
+	* debian/osso-applet-screencalibration.prerm:
+	Dummy prerm script added, needed for update.
+	Fixes: NB#114096 - "osso-applet-screencalibration pre-removal script
+	fails"
+
 2009-05-04  Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>
 
 	Release 1.8-2
