@@ -1,3 +1,7 @@
+2009-05-07  Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>
+
+	Release 1.8-3
+
 2009-05-07  Peter Aradi <peter.aradi@blumsoft.eu>
 
 	* debian/osso-applet-screencalibration.prerm:
