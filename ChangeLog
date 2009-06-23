@@ -1,3 +1,9 @@
+2009-06-23  Peter Aradi <peter.aradi@blumsoft.eu>
+
+	* src/gfx.c:
+	Fixes: NB#111017 - "some unwanted lines are seen on the applet after
+	completing the calibration"
+
 2009-05-07  Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>
 
 	Release 1.8-3
