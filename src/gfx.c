@@ -502,7 +502,7 @@ draw_instructions (x_info *xinfo, int active, uint info)
 
   get_text_extents (xinfo, _("scca_fi_calibrate"), FONT, &w, &h);
 
-  draw_rect (xinfo, 0, xinfo->yres/2 - 3*h, xinfo->xres, 6*h, 1.0, 1.0, 1.0, 1.0);
+  draw_rect (xinfo, 0, xinfo->yres/2 - 3*h, xinfo->xres, 7*h, 1.0, 1.0, 1.0, 1.0);
 
   if (info != TAP_COMPLETE)
     draw_text_center(xinfo, xinfo->yres/2 - 2*h, _("scca_fi_calibrate"));
