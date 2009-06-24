@@ -1,3 +1,11 @@
+osso-applet-screencalibration (1.9-1) unstable; urgency=low
+
+  Peter:
+  * Fixes: NB#111017 - some unwanted lines are seen on the applet after
+    completing the calibration
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 24 Jun 2009 08:57:04 +0300
+
 osso-applet-screencalibration (1.8-3) unstable; urgency=low
 
   Peter:
