@@ -1,3 +1,9 @@
+osso-applet-screencalibration (1.10-1~unreleased) unstable; urgency=low
+
+  * foo
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 24 Jun 2009 09:02:40 +0300
+
 osso-applet-screencalibration (1.9-1) unstable; urgency=low
 
   Peter:
