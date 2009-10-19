@@ -1,8 +1,8 @@
-osso-applet-screencalibration (1.10-1~unreleased) unstable; urgency=low
+osso-applet-screencalibration (1.10-1) unstable; urgency=low
 
-  * foo
+  * Fixes: NB#124526 - Screen calibration not closing on launching camera using H/W key
 
- -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Wed, 24 Jun 2009 09:02:40 +0300
+ -- Peter Aradi <peter.aradi@blumsoft.eu>  Mon, 10 Mar 2009 08:45:48 +0100
 
 osso-applet-screencalibration (1.9-1) unstable; urgency=low
 

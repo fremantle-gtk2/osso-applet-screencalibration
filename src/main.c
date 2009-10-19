@@ -618,24 +618,16 @@ calibration_event_loop (void)
     	}
 	  break;
 
-    case ClientMessage:{
-	   /* Exit when another window gets on top of us. This seems to be always
-		* accompanied by a _GTK_DELETE_TEMPORARIES clientmessage (osso specific).
-		* Together with DnD flag, the applet does not display information
-		* banners, but closes when a dialog tries to get on top.
-		*
-		* TODO: find a better solution. this is based on a side-effect.
-		* but xinfo.win is not a hildon window, so is_topmost property 
-		* cannot be watched...
-		**/
-	  Atom mtype = ((XClientMessageEvent*)&ev)->message_type;
-	  Atom dt = XInternAtom (xinfo.dpy, "_GTK_DELETE_TEMPORARIES", False);
-	  if (mtype == dt)
-		 goto exit;
-	}
-	  break;
+    case LeaveNotify:{
+      /* Exit when another window gets on top of us.*/
+      int mtype = ((XLeaveWindowEvent*)&ev)->type;
+      if (mtype == LeaveNotify)
+        goto exit;
+      }
+      break;
 	}
 	}
+
  exit:
   return;
 	

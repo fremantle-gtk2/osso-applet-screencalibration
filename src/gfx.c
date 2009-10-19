@@ -124,7 +124,7 @@ init_input (x_info* xinfo)
 	       /* mouse buttons are for x86 debugging */
 	       ButtonPressMask | ButtonReleaseMask |
 #endif
-	       ExposureMask);
+	       ExposureMask | LeaveWindowMask );
  
 	return 1;
 }
