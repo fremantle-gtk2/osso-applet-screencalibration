@@ -1,3 +1,18 @@
+2009-10-19  Peter Aradi <peter.aradi@blumsoft.eu>
+
+	Release 1.10-1
+
+2009-10-19  Peter Aradi <peter.aradi@blumsoft.eu>
+
+	* src/gfx.c:
+	* src/main.c:
+	Using LeaveNotify events
+	Fixes: NB#124526 - Screen calibration not closing on launching camera using H/W key
+
+	* src/calibx.h.in:
+	* debian/control:
+	removed remaining dependencies
+
 2009-06-24  Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>
 
 	Release 1.9-1
