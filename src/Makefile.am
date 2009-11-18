@@ -35,10 +35,9 @@
 SOURCES = \
 	  main.c        \
 	  gfx.c         \
-	  calibration.c \
 	  common.h      \
-	  gfx.h         \
-	  calibration.h
+	  gfx.h
+
 
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/src
 CFLAGS = @CFLAGS@ @DEFS@ $(INCLUDES)
