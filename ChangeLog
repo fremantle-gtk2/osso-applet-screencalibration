@@ -1,3 +1,14 @@
+2009-11-18  Peter Aradi <peter.aradi@blumsoft.eu>
+
+	* src/main.c:
+	Simplified coordinate extrapolation.
+	Fixes: NB#145074 - Touchscreen not accurate in corners
+	evdev input buffer flushed
+
+	* src/Makefile.am:
+	* src/calibration.[ch]:
+	removed unused legacy files
+
 2009-10-19  Peter Aradi <peter.aradi@blumsoft.eu>
 
 	Release 1.10-1

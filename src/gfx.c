@@ -50,8 +50,9 @@ set_calibration_prop (x_info *xinfo, cal_evdev *p)
 
   XChangeDeviceProperty(xinfo->dpy, xinfo->pointer, prop, XA_INTEGER, 32,
 						PropModeReplace, (unsigned char*)data, 4);
-
+/*
   XCloseDevice(xinfo->dpy, xinfo->pointer);
+*/
   free (data);
 }
 
@@ -250,9 +251,14 @@ init_graphics (x_info *xinfo)
 void
 free_graphics (x_info *xinfo)
 {
+  if (!xinfo)
+    return;
+/* ERROR ("in %s\n", __func__); */
   cairo_surface_destroy(xinfo->main_surface);
   cairo_surface_destroy(xinfo->target_active);
   cairo_surface_destroy(xinfo->target_passive);
+/*  XCloseDisplay (xinfo->dpy);
+ERROR ("leaving %s\n", __func__); */
 }
 
 

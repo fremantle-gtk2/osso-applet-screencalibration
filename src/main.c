@@ -38,7 +38,6 @@
 #include <X11/keysym.h>
 #include <X11/extensions/XInput.h>
 
-#include "calibration.h"
 #include "common.h"
 #include "gfx.h"
 
@@ -46,12 +45,18 @@
 
 #define ANIM_TIMEOUT 30000
 
+typedef struct {
+        int x[4], xfb[4];
+        int y[4], yfb[4];
+        int a[7];
+} calibration;
+
 static x_info xinfo;
 static calibration cal;
 
 #ifdef ARM_TARGET
 #define DEFAULT_CAL_PARAMS "14114 18 -2825064 34 -8765 32972906 65536"
-#define DEFAULT_EVDEV_PARAMS "200 3910 3761 180"
+#define DEFAULT_EVDEV_PARAMS "172 3880 3780 235"
 #define XCONF "/usr/share/hal/fdi/policy/10osvendor/10-x11-input.fdi"
 #define MAX_SAMPLES 256
 static int ts, kb;
@@ -183,6 +188,11 @@ reset_calibration (x_info *xinfo)
   }
 
   set_calibration_prop (xinfo, &reset);
+  XFlush (xinfo->dpy);
+  XSync (xinfo->dpy, 1);
+
+  usleep (250000);
+
   return 1;
 }
 
@@ -210,8 +220,7 @@ static uint distance (int x1, int y1, int x2, int y2)
 }
 
 /*
- * Use middle point to calculate min and max device coordinates of x and y
- * Middle point and target point device and screen coordinates are already
+ * Use target point device coordinates, which are already
  * stored in cal
  */
 static void 
@@ -219,48 +228,35 @@ extrapolate_dev_coords (cal_evdev *p, calibration* cal, x_info* xinfo)
 {
   int X=xinfo->xres;
   int Y=xinfo->yres;
-  float a1, a2;
+  float min, max, delta;
 
-  a1 = (float)(X - cal->xfb[1]) / X;
-  a1 *= (float)(cal->x[4] * 2);
-  a1 += (float) cal->x[1];
-  a2 = (float)(X - cal->xfb[2]) / X;
-  a2 *= (float)(cal->x[4] * 2);
-  a2 += (float) cal->x[2];
-  /* xmax */
-  p->params[1] = (int)((a1+a2)/2);
+  /* x */
+  min = (float)((cal->x[0]+cal->x[3])/2);
+  max = (float)((cal->x[1]+cal->x[2])/2);
+  delta = (max - min) / ((float)(X - 2*POINT_SCR_DST_X)/POINT_SCR_DST_X);
+  min -= delta;
+  max += delta;
 
-  a1 = (float)(cal->xfb[0]) / X;
-  a1 *= (float)(cal->x[4] * 2);
-  a1 *= -1.0;
-  a1 += (float) cal->x[0];
-  a2 = (float)(cal->xfb[3]) / X;
-  a2 *= (float)(cal->x[4] * 2);
-  a2 *= -1.0;
-  a2 += (float) cal->x[3];
-  /* xmin */
-  p->params[0] = (int)((a1+a2)/2);
+  p->params[0] = (int) min;
+  p->params[1] = (int) max;
 
-  a1 = (float)(cal->yfb[0]) / Y;
-  a1 *= (float)(cal->y[4] * 2);
-  a1 += (float) cal->y[0];
-  a2 = (float)(cal->yfb[1]) / Y;
-  a2 *= (float)(cal->y[4] * 2);
-  a2 += (float) cal->y[1];
-  /* ymin */
-  p->params[2] = (int)((a1+a2)/2);
+  /* y */
+  min = (float)((cal->y[0]+cal->y[1])/2);
+  max = (float)((cal->y[2]+cal->y[3])/2);
+  delta = (min - max) / ((float)(Y - 2*POINT_SCR_DST_Y)/POINT_SCR_DST_Y);
+  min += delta;
+  max -= delta;
 
-  a1 = (float)(Y - cal->yfb[2]) / Y;
-  a1 *= (float)(cal->y[4] * 2);
-  a1 *= -1.0;
-  a1 += (float) cal->y[2];
-  a2 = (float)(Y - cal->yfb[3]) / Y;
-  a2 *= (float)(cal->y[4] * 2);
-  a2 *= -1.0;
-  a2 += (float) cal->y[3];
-  /* ymax */
-  p->params[3] = (int)((a1+a2)/2);
-  
+  p->params[2] = (int) min;
+  p->params[3] = (int) max;
+
+  /* debugging output */
+  int i;
+  ERROR ("extrapolated parameters:\n");
+  for (i = 0; i<4; i++) {
+     ERROR ("%d\n",p->params[i]);
+  }
+  ERROR ("------------------\n");
 }
 
 /*
@@ -487,7 +483,6 @@ calibration_event_loop (void)
 		} else {
 		  raw_y = (samp[middle-1].y + samp[middle].y) / 2;
 		}
-      
 
 		trans_x = raw_x;
 		trans_y = raw_y;
@@ -510,13 +505,10 @@ calibration_event_loop (void)
 
 	      if (ACTIVE_HOTSPOT > HOTSPOT_AMOUNT)
 		  {
-		    /* calculate center point */
-		    cal.x[4] = cal.x[0] - ((cal.x[0] - cal.x[1])/2);
-		    cal.y[4] = cal.y[0] - ((cal.y[0] - cal.y[3])/2);
-            /* calculate extrapolated min and max values
+              /* calculate extrapolated min and max values
 	        * give parameters to xserver */
-			cal_evdev result;
-			extrapolate_dev_coords(&result, &cal, &xinfo);
+		    cal_evdev result;
+		    extrapolate_dev_coords(&result, &cal, &xinfo);
 
 	   if (!write_config(&result)) {
 		   ERROR ("Could not write xinput fdi file\n");
@@ -541,12 +533,17 @@ calibration_event_loop (void)
 	      XSync (xinfo.dpy, 1);
 	      usleep (500000);
 
+	      /* flush buffer */
+	      if (samp) free(samp);
+	      samp = calloc (MAX_SAMPLES, sizeof (ts_sample));
+	      read_ts_events (ts, samp);
+	      usleep (500000);
 	    }
 	  else
 	    {
 	      draw_instructions (&xinfo, ACTIVE_HOTSPOT, TAP_CLOSER);
 	      XFlush (xinfo.dpy);
-		  XSync (xinfo.dpy, 1);
+	      XSync (xinfo.dpy, 1);
 	    }
 	  } /* if there was any event on ts */
 
@@ -630,7 +627,6 @@ calibration_event_loop (void)
 
  exit:
   return;
-	
 }
 
 
@@ -711,7 +707,6 @@ int main (int argc, char **argv)
   cal.xfb[1] = xinfo.hotspots[1].x;  cal.yfb[1] = xinfo.hotspots[1].y;
   cal.xfb[2] = xinfo.hotspots[2].x;  cal.yfb[2] = xinfo.hotspots[2].y;
   cal.xfb[3] = xinfo.hotspots[3].x;  cal.yfb[3] = xinfo.hotspots[3].y;
-  cal.xfb[4] = xinfo.xres/2;  cal.yfb[4] = xinfo.yres/2;
 
   XFlush(xinfo.dpy);
   XSync(xinfo.dpy, 0);
