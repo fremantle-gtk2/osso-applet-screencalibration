@@ -45,6 +45,9 @@
 
 #define ANIM_TIMEOUT 30000
 
+/* display fade timeout in miliseconds */
+#define DISPLAY_TIMEOUT 90000
+
 typedef struct {
         int x[4], xfb[4];
         int y[4], yfb[4];
@@ -438,18 +441,25 @@ calibration_event_loop (void)
 
   draw_screen (&xinfo, ACTIVE_HOTSPOT, TAP_NEXT_TARGET);
   XFlush (xinfo.dpy); 
-  XSync (xinfo.dpy, 1); 
 
   blit_active_hotspot (&xinfo, ACTIVE_HOTSPOT);
 
   /* swallow events */
   XFlush (xinfo.dpy);
-  XSync (xinfo.dpy, 1);
+
   usleep (250000);
+
+  /* for timer */
+  struct timeval now, start;
+  gettimeofday (&start, NULL);
 
   for (;;)
     {
-      usleep (20000);
+
+      gettimeofday (&now, NULL);
+      if (timediff(&start, &now) > DISPLAY_TIMEOUT) {
+        goto exit;
+      }
 
 #ifdef ARM_TARGET
       int index   = 0;
@@ -521,7 +531,6 @@ calibration_event_loop (void)
 		    /* set calibration device property */
 		    set_calibration_prop (&xinfo, &result);
 		    XFlush (xinfo.dpy);
-		    XSync (xinfo.dpy, 1);
 		    usleep (2500000);
 
 		    goto exit;
@@ -530,7 +539,6 @@ calibration_event_loop (void)
 	      /* neeext! */
 	      draw_screen (&xinfo, ACTIVE_HOTSPOT, TAP_NEXT_TARGET);
 	      XFlush (xinfo.dpy);
-	      XSync (xinfo.dpy, 1);
 	      usleep (500000);
 
 	      /* flush buffer */
@@ -543,7 +551,6 @@ calibration_event_loop (void)
 	    {
 	      draw_instructions (&xinfo, ACTIVE_HOTSPOT, TAP_CLOSER);
 	      XFlush (xinfo.dpy);
-	      XSync (xinfo.dpy, 1);
 	    }
 	  } /* if there was any event on ts */
 
@@ -594,7 +601,6 @@ calibration_event_loop (void)
 	  ACTIVE_HOTSPOT = 42;
 	  draw_screen (&xinfo, ACTIVE_HOTSPOT, TAP_COMPLETE);
 	  XFlush (xinfo.dpy);
-	  XSync (xinfo.dpy, 1);
 	  usleep (2500000);
 	  goto exit;
 	}
@@ -617,6 +623,7 @@ calibration_event_loop (void)
 
     case LeaveNotify:{
       /* Exit when another window gets on top of us.*/
+      ERROR ("LeaveNotify\n");
       int mtype = ((XLeaveWindowEvent*)&ev)->type;
       if (mtype == LeaveNotify)
         goto exit;
@@ -709,7 +716,6 @@ int main (int argc, char **argv)
   cal.xfb[3] = xinfo.hotspots[3].x;  cal.yfb[3] = xinfo.hotspots[3].y;
 
   XFlush(xinfo.dpy);
-  XSync(xinfo.dpy, 0);
 
   if (atexit(closing_procedure) != 0)
   {
