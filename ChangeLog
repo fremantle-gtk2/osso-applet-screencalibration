@@ -1,3 +1,16 @@
+2009-11-23  Peter Aradi <peter.aradi@blumsoft.eu>
+
+	Release 1.11-1
+
+2009-11-23  Peter Aradi <peter.aradi@blumsoft.eu>
+
+	* src/main.c:
+	code cleanup
+	regression fix: applet closes after defined time
+
+	* src/gfx.c:
+	code cleanup
+
 2009-11-18  Peter Aradi <peter.aradi@blumsoft.eu>
 
 	* src/main.c:

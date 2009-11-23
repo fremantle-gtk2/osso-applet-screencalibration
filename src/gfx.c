@@ -27,6 +27,7 @@
 #include <time.h>
 #include "gfx.h"
 #include <X11/extensions/XInput.h>
+#include <X11/Xutil.h>
 
 #define PATH_BACKSPACE "/usr/share/icons/hicolor/32x32/hildon/general_backspace.png"
 
@@ -50,9 +51,9 @@ set_calibration_prop (x_info *xinfo, cal_evdev *p)
 
   XChangeDeviceProperty(xinfo->dpy, xinfo->pointer, prop, XA_INTEGER, 32,
 						PropModeReplace, (unsigned char*)data, 4);
-/*
+
   XCloseDevice(xinfo->dpy, xinfo->pointer);
-*/
+
   free (data);
 }
 
@@ -147,7 +148,7 @@ init_graphics (x_info *xinfo)
 	  return 0;
 	}
     }
-  
+
   xinfo->screen = DefaultScreen(xinfo->dpy);
   xinfo->depth  = DefaultDepth(xinfo->dpy, xinfo->screen);
   xinfo->cmap   = DefaultColormap(xinfo->dpy, xinfo->screen);
@@ -169,11 +170,23 @@ init_graphics (x_info *xinfo)
                               InputOutput,
                               xinfo->visual,
                               CWBackPixel, &wa);
-			      
+
   if (!xinfo->win)
     {
       return 0;
     }
+
+  /* set _WM_NAME to empty string */
+  char empty = '\0';
+  name_atom       = XInternAtom(xinfo->dpy, "_NET_WM_NAME", False);
+  XChangeProperty(xinfo->dpy, xinfo->win, name_atom, XA_STRING, 8,
+                  PropModeReplace, (const unsigned char*)&empty, 1);
+
+  /* set WM_CLASS */
+  XClassHint h;
+  h.res_name = "tscalibrate";
+  h.res_class = "Controlpanel";
+  XSetClassHint (xinfo->dpy, xinfo->win, &h);
 
   /* set fullscreen atom */
   state_atom      = XInternAtom(xinfo->dpy, "_NET_WM_STATE", False);
@@ -187,12 +200,6 @@ init_graphics (x_info *xinfo)
   dnd_atom       = XInternAtom(xinfo->dpy, "_HILDON_DO_NOT_DISTURB", False);
   XChangeProperty(xinfo->dpy, xinfo->win, dnd_atom, XA_INTEGER, 32,
                   PropModeReplace, (const unsigned char*)&set, 1);
-
-  /* set _WM_NAME to empty string */
-  char empty = '\0';
-  name_atom       = XInternAtom(xinfo->dpy, "_NET_WM_NAME", False);
-  XChangeProperty(xinfo->dpy, xinfo->win, name_atom, XA_STRING, 8,
-                  PropModeReplace, (const unsigned char*)&empty, 1);
 
   if (!init_input (xinfo))
 	 return 0;
@@ -253,12 +260,10 @@ free_graphics (x_info *xinfo)
 {
   if (!xinfo)
     return;
-/* ERROR ("in %s\n", __func__); */
+
   cairo_surface_destroy(xinfo->main_surface);
   cairo_surface_destroy(xinfo->target_active);
   cairo_surface_destroy(xinfo->target_passive);
-/*  XCloseDisplay (xinfo->dpy);
-ERROR ("leaving %s\n", __func__); */
 }
 
 
