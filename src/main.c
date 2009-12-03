@@ -91,9 +91,8 @@ static int write_config (cal_evdev *p) {
   FILE* fp_conf = fopen (XCONF, "r");
   char* calibration_values = calloc (512,sizeof(char));
 
-  /*FIXME rotation components are currently not used by xserver, set to 0 */
-  i = snprintf (calibration_values, 512, "\t\t\t<merge key=\"input.x11_options.Calibration\" type=\"string\">%d %d %d %d %d %d</merge>\n", p->params[0], p->params[1],
-	 p->params[2], p->params[3], 0,0);
+  i = snprintf (calibration_values, 512, "\t\t\t<merge key=\"input.x11_options.Calibration\" type=\"string\">%d %d %d %d</merge>\n", p->params[0], p->params[1],
+	 p->params[2], p->params[3]);
   
   if (i<=0)
 	 goto error;

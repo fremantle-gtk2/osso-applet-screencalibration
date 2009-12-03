@@ -1,6 +1,12 @@
-osso-applet-screencalibration (1.11-1) unstable; urgency=low
+osso-applet-screencalibration (1.12-1) unstable; urgency=low
 
   * Fixes: NB#145074 - Touchscreen not accurate in corners after calibration
+
+ -- Peter Aradi <peter.aradi@blumsoft.eu>  Tue,  1 Dec 2009 09:32:31 +0100
+
+osso-applet-screencalibration (1.11-1) unstable; urgency=low
+
+  * Fixes NB#145074 - Touchscreen not accurate in corners after calibration
 
  -- Peter Aradi <peter.aradi@blumsoft.eu>  Mon, 23 Nov 2009 15:48:51 +0100
 

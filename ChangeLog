@@ -1,3 +1,16 @@
+2009-12-01  Peter Aradi <peter.aradi@blumsoft.eu>
+
+	Release 1.12-1
+
+2009-12-01  Peter Aradi <peter.aradi@blumsoft.eu>
+
+	* src/main.c:
+	* src/gfx.c:
+	modified number of evdev calibration parameters to be in sync with
+	evdev driver
+	* debian/rules:
+	package does not include docs from now on (changelog...)
+
 2009-11-23  Peter Aradi <peter.aradi@blumsoft.eu>
 
 	Release 1.11-1

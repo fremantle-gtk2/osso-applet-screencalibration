@@ -1,6 +1,6 @@
 AC_PREREQ(2.59)
 
-AC_INIT(osso-applet-screencalibration, 1.11, peter.aradi@blumsoft.eu)
+AC_INIT(osso-applet-screencalibration, 1.12, peter.aradi@blumsoft.eu)
 AM_INIT_AUTOMAKE(AC_PACKAGE_NAME, AC_PACKAGE_VERSION)
 AM_CONFIG_HEADER(config.h)
 
