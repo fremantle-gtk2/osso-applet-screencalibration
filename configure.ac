@@ -9,6 +9,8 @@ AC_PROG_CC
 AC_PROG_INSTALL
 AC_HEADER_STDC
 
+AM_PROG_LIBTOOL
+
 PKG_PROG_PKG_CONFIG
 
 if test x`dpkg --print-architecture` = xarmel; then \
@@ -46,8 +48,11 @@ PKG_CHECK_MODULES(LIBOSSO, libosso)
 AC_SUBST(LIBOSSO_LIBS)
 AC_SUBST(LIBOSSO_CFLAGS)
 
-PROGRAM=osso-applet-screencalibration
-AC_SUBST(PROGRAM)
+hildoncontrolpanellibdir=`pkg-config hildon-control-panel --variable=pluginlibdir`
+AC_SUBST(hildoncontrolpanellibdir)
+
+hildoncontrolpaneldatadir=`pkg-config hildon-control-panel --variable=plugindesktopentrydir`
+AC_SUBST(hildoncontrolpaneldatadir)
 
 AC_CONFIG_FILES([
 Makefile \

@@ -1,10 +1,6 @@
 #
 # This file is part of osso-applet-screencalibration
 #
-# Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies).
-#
-# Contact: Tapani Paelli <tapani.palli@nokia.com>
-#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License 
 # version 2 as published by the Free Software Foundation. 
@@ -18,43 +14,28 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 # 02110-1301 USA
-#
-# ----------------------------------------------------------
-#
-# Makefile for touchscreen applet
-#
-#  ts_cfg          - executable for configuration writing
-#  tscalib.so      - dynamic library for control panel
-#  tscalibrate     - calibration program
-#  tscalib.desktop - configuration file for control panel
-#
-#  launcher is depending on gtk because of the current API
-#
 
-
-SOURCES = \
+bin_PROGRAMS = tscalibrate
+tscalibrate_SOURCES = \
 	  main.c        \
 	  gfx.c         \
 	  common.h      \
 	  gfx.h
 
 
-AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/src
-CFLAGS = @CFLAGS@ @DEFS@ $(AM_CPPFLAGS)
-DEPS = @CAIRO_LIBS@ @CAIRO_CFLAGS@ @XI_CFLAGS@ @XI_LIBS@ $(CFLAGS)
-LAUNCHER_DEPS = @GTK_CFLAGS@ @GTK_LIBS@ @LIBOSSO_CFLAGS@ @LIBOSSO_LIBS@ $(CFLAGS)
+tscalibrate_CFLAGS = -I$(top_srcdir) -I$(top_srcdir)/src $(CAIRO_CFLAGS) \
+		$(XI_CFLAGS) $(ARM_OPS)
+tscalibrate_LDADD = $(CAIRO_LIBS) $(XI_LIBS)
 
+hildon_control_panel_la_LTLIBRARIES = tscalib.la
+hildon_control_panel_ladir = $(hildoncontrolpanellibdir)
 
-DESTDIR = @DESTDIR@
-BINARY=tscalibrate
-CC = gcc -g -O2
+tscalib_la_SOURCES = launch.c
+tscalib_la_CFLAGS = $(GTK_CFLAGS) $(LIBOSSO_CFLAGS)
+tscalib_la_LDFLAGS = -module -avoid-version -shared
+tscalib_la_LIBADD = $(GTK_LIBS) $(LIBOSSO_LIBS)
 
-all :
-	$(CC) -o $(BINARY) $(SOURCES) $(ARM_OPS) $(DEPS) -lm
-	$(CC) -D_GNU_SOURCE -shared -fPIC -o tscalib.so launch.c $(LAUNCHER_DEPS) 
+install-data-hook:
+	@(find $(DESTDIR)$(hildon_control_panel_ladir) -type f -name \*.la -delete)
 
-install :
-	install -m 755 $(BINARY) $(DESTDIR)/usr/bin
-	install -m 644 tscalib.so $(DESTDIR)/usr/lib/hildon-control-panel
-clean :
-	rm -f @PROGRAM@ tscalib.so *~ core*
+MAINTAINERCLEANFILES = Makefile.in
