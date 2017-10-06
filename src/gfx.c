@@ -27,6 +27,7 @@
 #include <time.h>
 #include "gfx.h"
 #include <X11/extensions/XInput.h>
+#include <X11/extensions/XI2.h>
 #include <X11/Xutil.h>
 
 #define PATH_BACKSPACE "/usr/share/icons/hicolor/32x32/hildon/general_backspace.png"
@@ -85,8 +86,8 @@ init_input (x_info* xinfo)
   xinfo->pointer = NULL;
   xinfo->keyboard = NULL;
 
-  XQueryInputVersion(xinfo->dpy, XI_2_Major, XI_2_Minor);
-  
+  XGetExtensionVersion(xinfo->dpy, INAME);
+
   info = XListInputDevices(xinfo->dpy, &ndevices);
 
   for (i = 0; i < ndevices; i++) {
