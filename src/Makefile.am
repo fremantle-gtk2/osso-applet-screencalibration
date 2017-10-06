@@ -39,8 +39,8 @@ SOURCES = \
 	  gfx.h
 
 
-INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/src
-CFLAGS = @CFLAGS@ @DEFS@ $(INCLUDES)
+AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/src
+CFLAGS = @CFLAGS@ @DEFS@ $(AM_CPPFLAGS)
 DEPS = @CAIRO_LIBS@ @CAIRO_CFLAGS@ @XI_CFLAGS@ @XI_LIBS@ $(CFLAGS)
 LAUNCHER_DEPS = @GTK_CFLAGS@ @GTK_LIBS@ @LIBOSSO_CFLAGS@ @LIBOSSO_LIBS@ $(CFLAGS)
 
