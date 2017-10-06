@@ -2,8 +2,8 @@ Source: osso-applet-screencalibration
 Section: x11
 Priority: optional
 Maintainer: Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>
-Standards-Version: 3.6.0
-Build-Depends: debhelper (>= 4.0.0), autoconf, automake1.7, pkg-config, libgtk2.0-dev, libglib2.0-dev, hildon-control-panel-dev (>=1.0.0-1), libosso-dev, libdbus-1-dev, libx11-dev | xlibs-dev, libxi-dev
+Standards-Version: 3.9.6
+Build-Depends: debhelper (>= 9), autoconf, automake, pkg-config, libgtk2.0-dev, libglib2.0-dev, hildon-control-panel-dev (>=1.0.0-1), libosso-dev, libdbus-1-dev, libx11-dev | xlibs-dev, libxi-dev
 
 Package: osso-applet-screencalibration
 Section: libs
