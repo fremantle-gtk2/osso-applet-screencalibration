@@ -57,14 +57,14 @@ typedef struct {
 static x_info xinfo;
 static calibration cal;
 
-#ifdef ARM_TARGET
+#ifndef TS_DEBUG
 #define DEFAULT_CAL_PARAMS "14114 18 -2825064 34 -8765 32972906 65536"
 #define DEFAULT_EVDEV_PARAMS "172 3880 3780 235"
 #define XCONF "/usr/share/hal/fdi/policy/10osvendor/10-x11-input.fdi"
 #define MAX_SAMPLES 256
 static int ts, kb;
 static calibration defcal;
-#endif /* ifdef ARM_TARGET */
+#endif /* ifndef TS_DEBUG */
 
 /*
  * called when program exits, sets rawmode off
@@ -75,7 +75,7 @@ closing_procedure (void)
   XCloseDisplay(xinfo.dpy);
 }
 
-#ifdef ARM_TARGET
+#ifndef TS_DEBUG
 /*****************************************************************/
 /* Write x11-input.fdi with new calibration parameters */
 static int write_config (cal_evdev *p) {
@@ -274,7 +274,7 @@ static int sort_by_y (const void* a, const void *b)
    return (((ts_sample *)a)->y - ((ts_sample *)b)->y);
 }
 /*****************************************************************/
-#endif /* ifdef ARM_TARGET */
+#endif /* ifndef TS_DEBUG */
 
 static int
 timediff (struct timeval *starttime,
@@ -351,7 +351,7 @@ get_wintype_prop (Display *dpy, Window w)
   return winNormalAtom;
 }
 
-#ifdef ARM_TARGET
+#ifndef TS_DEBUG
 static int read_ts_events (int dev, ts_sample* samp) {
   struct input_event ev[512];
   int read_bytes;
@@ -420,7 +420,7 @@ static int read_key_events (int dev, int* keys) {
   }
   return index;
 }
-#endif /* #ifdef ARM_TARGET */
+#endif /* #ifndef TS_DEBUG */
 
 /*
  * read events & draw graphics
@@ -434,7 +434,7 @@ calibration_event_loop (void)
 
   unsigned int i;
 
-#ifdef ARM_TARGET
+#ifndef TS_DEBUG
   ts_sample *samp = NULL;
 #endif
 
@@ -460,7 +460,7 @@ calibration_event_loop (void)
         goto exit;
       }
 
-#ifdef ARM_TARGET
+#ifndef TS_DEBUG
       int index   = 0;
       int middle  = 0;
       int raw_x   = 0;
@@ -567,7 +567,7 @@ calibration_event_loop (void)
 		   /* user exit */
 		   goto exit;
 	  }
-#endif /* ifdef ARM_TARGET */
+#endif /* ifndef TS_DEBUG */
 
       /*
        * other events ...
@@ -588,7 +588,7 @@ calibration_event_loop (void)
     switch (ev.type)
     {
 
-#ifndef ARM_TARGET
+#ifdef TS_DEBUG
     case ButtonRelease :
 	ACTIVE_HOTSPOT++;
 
@@ -648,7 +648,7 @@ int main (int argc, char **argv)
   bind_textdomain_codeset("osso-applet-screencalibration", "UTF-8");
   textdomain("osso-applet-screencalibration");
   
-#ifdef ARM_TARGET 
+#ifndef TS_DEBUG
   if ((ts = open("/dev/input/ts", O_RDONLY | O_NONBLOCK)) < 0) {
 	perror("evdev open");
 	exit(1);
@@ -658,7 +658,7 @@ int main (int argc, char **argv)
 	perror("evdev open");
 	exit(1);
   }
-#endif /* ifdef ARM_TARGET */
+#endif /* ifndef ARM_TARGET */
 
   if (!init_graphics (&xinfo))
   {
@@ -669,7 +669,7 @@ int main (int argc, char **argv)
   /*
    * reset 'factory default' values from command line
    */
-#ifdef ARM_TARGET
+#ifndef TS_DEBUG
   if (argc > 1)
   {
     if(!strcmp("reset", argv[1]))
@@ -695,7 +695,7 @@ int main (int argc, char **argv)
 		xinfo.win,
 		None,
 		CurrentTime);
-#endif /* ifdef ARM_TARGET */
+#endif /* ifndef TS_DEBUG */
 
    int grab = XGrabKeyboard(xinfo.dpy,
                     xinfo.win,

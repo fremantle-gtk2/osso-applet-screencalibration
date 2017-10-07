@@ -38,7 +38,7 @@
 #include <hildon-cp-plugin/hildon-cp-plugin-interface.h>
 
 /* sudo needed on device for accessing files in /etc and using tslib */
-#ifdef ARM_TARGET
+#ifndef TS_DEBUG
 #define LAUNCH_PAR_AMOUNT 5
 #else
 #define LAUNCH_PAR_AMOUNT 4
@@ -80,7 +80,7 @@ my_execute(char *str, int xid)
   
   /* build parameters, <sudo> binary <option> <id> */
   i=0;
-#ifdef ARM_TARGET
+#ifndef TS_DEBUG
   cmd[i++] = strdup("/usr/bin/sudo");
 #endif
   cmd[i++] = strdup(BINARY);

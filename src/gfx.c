@@ -123,8 +123,8 @@ init_input (x_info* xinfo)
 	/* register for other events */
     XSelectInput(xinfo->dpy, xinfo->win,
 	       StructureNotifyMask | VisibilityChangeMask |
-#ifndef ARM_TARGET
-	       /* mouse buttons are for x86 debugging */
+#ifdef DEBUG
+	       /* mouse buttons are for debugging */
 	       ButtonPressMask | ButtonReleaseMask |
 #endif
 	       ExposureMask | LeaveWindowMask );

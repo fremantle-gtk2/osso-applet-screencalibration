@@ -13,20 +13,14 @@ AM_PROG_LIBTOOL
 
 PKG_PROG_PKG_CONFIG
 
-if test x`dpkg --print-architecture` = xarmel; then \
-	AC_DEFINE(ARM_TARGET, 1, [Description]) \
-	else \
-	AC_DEFINE(X86_TARGET, 1, [Description]) \
-fi;
-
 AC_ARG_ENABLE(debug, [AC_HELP_STRING([--enable-debug],[Debug (default=no)])],
                             [hildon_use_debug=yes],[hildon_use_debug=no])
 
 if test "x${hildon_use_debug}" = "xyes"
 then
-   CFLAGS="$CFLAGS -ggdb -O0 -DDEBUG"
+   CFLAGS="$CFLAGS -DDEBUG -DTS_DEBUG"
 else
-   CFLAGS="$CFLAGS -O2"
+   CFLAGS="$CFLAGS -Wall"
 fi
 
 AC_SUBST(CFLAGS)
